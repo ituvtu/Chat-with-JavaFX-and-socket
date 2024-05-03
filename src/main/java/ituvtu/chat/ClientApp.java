@@ -1,5 +1,4 @@
 package ituvtu.chat;
-
 import javafx.application.Application;
 import javafx.fxml.FXMLLoader;
 import javafx.scene.Parent;
@@ -7,48 +6,46 @@ import javafx.scene.Scene;
 import javafx.stage.Stage;
 
 public class ClientApp extends Application {
-
-    private Stage loginStage;
+    private static ClientController controller;
+    private Client client;  // Додано поле для посилання на WebSocket клієнта
 
     @Override
     public void start(Stage primaryStage) throws Exception {
-        this.loginStage = primaryStage;
-        showLogin(primaryStage);
-    }
-
-    private void showLogin(Stage primaryStage) throws Exception {
-        FXMLLoader loader = new FXMLLoader(getClass().getResource("Login.fxml"));
+        FXMLLoader loader = new FXMLLoader(getClass().getResource("client.fxml"));
         Parent root = loader.load();
-        LoginController loginController = loader.getController();
-        loginController.setOnLoginSuccess(this::onUserLoggedIn);
+        controller = loader.getController();
 
-        primaryStage.setScene(new Scene(root));
-        primaryStage.setTitle("Login");
+        Scene scene = new Scene(root);
+        primaryStage.setTitle("Chat Client");
+        primaryStage.setScene(scene);
         primaryStage.show();
-    }
 
-    private void onUserLoggedIn(String username) {
-        try {
-            FXMLLoader loader = new FXMLLoader(getClass().getResource("Client.fxml"));
-            Parent root = loader.load();
-
-            ClientController clientController = loader.getController();
-            clientController.setClientName(username);  // transfer username from Login to Client
-
-            Stage stage = new Stage();
-            stage.setScene(new Scene(root));
-            stage.setTitle("Client - " + username);
-            stage.show();
-
-            // Close the login window
-            loginStage.close();
-        } catch (Exception e) {
-            //noinspection CallToPrintStackTrace
-            e.printStackTrace();
-        }
+        connectToServer();
     }
 
     public static void main(String[] args) {
         launch(args);
     }
+
+    private void connectToServer() {
+        try {
+            client = new Client("ws://localhost:12345");  // Створення нового об'єкта клієнта
+            client.connect();
+            controller.setClient(client);  // Надсилання посилання на клієнта до контролера
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+    }
+
+    @Override
+    public void stop() {
+        if (client != null) {
+            client.close();  // Закриття з'єднання з сервером
+        }
+    }
+
+    public static ClientController getController() {
+        return controller;
+    }
 }
+

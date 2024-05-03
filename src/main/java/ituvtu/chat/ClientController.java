@@ -1,87 +1,34 @@
 package ituvtu.chat;
 
-import javafx.fxml.*;
-import javafx.scene.control.*;
-import java.io.*;
-import java.net.*;
+import javafx.fxml.FXML;
+import javafx.scene.control.Button;
+import javafx.scene.control.TextArea;
+import javafx.scene.control.TextField;
 
 public class ClientController {
 
-    @FXML
-    private TextArea inputField;
-    @FXML
-    private TextField nameField;
+    public Button sendButton;
     @FXML
     private TextArea messageArea;
     @FXML
-    private Button sendButton;
+    private TextField inputField;
 
-    private Socket socket;
-    private PrintWriter writer;
-    private BufferedReader reader;
-    private String clientName;
+    private Client client;  // Variable to hold a reference to the client
 
-    public void initialize() {
-        try {
-            inputField.setPrefRowCount(1);
-            this.socket = new Socket("localhost", 5000);
-            this.writer = new PrintWriter(socket.getOutputStream(), true);
-            this.reader = new BufferedReader(new InputStreamReader(socket.getInputStream()));
-
-            // Thread for reading messages
-            Thread receiveThread = new Thread(this::receiveMessages);
-            receiveThread.setDaemon(true);
-            receiveThread.start();
-        } catch (IOException e) {
-            //noinspection CallToPrintStackTrace
-            e.printStackTrace();
-        }
-    }
     @FXML
-    private Label usernameLabel;
-
-    public void setUsername(String username) {
-        usernameLabel.setText(username);  // Set the username on a label or other component
-    }
-    private void receiveMessages() {
-        try {
-            String message;
-            while ((message = reader.readLine()) != null) {
-                String finalMessage = message;
-                javafx.application.Platform.runLater(() -> messageArea.appendText(finalMessage + "\n"));
-            }
-        } catch (IOException e) {
-            //noinspection CallToPrintStackTrace
-            e.printStackTrace();
-        }
-    }
-    public void setClientName(String name) {
-        clientName = name;  // Setting the username received from the login form
-    }
-
-    public void sendMessage() {
-        if (!inputField.getText().isEmpty()) {
-            writer.println(clientName + ": " + inputField.getText());
+    public void onSend() {
+        if (client != null && client.isOpen()) {
+            client.send(inputField.getText());
             inputField.clear();
         }
     }
 
-    // Closing resources
-    public void shutdown() {
-        try {
-            if (writer != null) {
-                writer.close();
-            }
-            if (socket != null) {
-                socket.close();
-            }
-        } catch (IOException e) {
-            //noinspection CallToPrintStackTrace
-            e.printStackTrace();
-        }
+    public void setClient(Client client) {
+        this.client = client;  // Method to install the client
     }
 
+    public void updateTextArea(String message) {
+        messageArea.appendText(message + "\n");
+    }
 }
-
-
 
