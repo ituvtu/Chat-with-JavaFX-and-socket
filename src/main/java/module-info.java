@@ -2,7 +2,8 @@ module ituvtu.chat {
     requires javafx.controls;
     requires javafx.fxml;
     requires org.java_websocket;
-
-    opens ituvtu.chat to javafx.fxml;
+    //    requires java.xml.bind;
+    requires jakarta.xml.bind;
+    opens ituvtu.chat to jakarta.xml.bind, javafx.fxml;
     exports ituvtu.chat;
 }

@@ -18,7 +18,8 @@ public class ClientController {
     @FXML
     public void onSend() {
         if (client != null && client.isOpen()) {
-            client.send(inputField.getText());
+            String user = ClientApp.getUsername();  // Отримати username з ClientApp
+            client.sendMessage(user, inputField.getText());  // Використовуємо отримане ім'я користувача
             inputField.clear();
         }
     }
@@ -31,4 +32,3 @@ public class ClientController {
         messageArea.appendText(message + "\n");
     }
 }
-

@@ -1,34 +1,26 @@
 package ituvtu.chat;
 
 import javafx.fxml.FXML;
-import javafx.stage.Stage;
+import javafx.scene.control.TextField;
 
-import java.util.function.Consumer;
-import javafx.scene.control.*;
 public class LoginController {
 
     @FXML
     private TextField usernameField;
 
-    private Consumer<String> onLoginSuccess;
-
-    public void setOnLoginSuccess(Consumer<String> onLoginSuccess) {
-        this.onLoginSuccess = onLoginSuccess;
-    }
-
-    @FXML
-    private void handleLoginButton() {
+    public void handleLoginButton() {
         String username = usernameField.getText().trim();
-        if (!username.isEmpty() && onLoginSuccess != null) {
-            onLoginSuccess.accept(username);
-            closeStage();
-        } else {
-            System.out.println("Username cannot be empty.");
-        }
-    }
+        if (!username.isEmpty()) {
+            ClientApp.setUsername(username); // Save the username
+            System.out.println("Logged in as: " + username);
 
-    private void closeStage() {
-        Stage stage = (Stage) usernameField.getScene().getWindow();
-        stage.close();
+            try {
+                ClientApp.showMainScreen(); // Go to the main window
+                ClientApp.connectToServer(); // Now we connect to the server
+            } catch (Exception e) {
+                //noinspection CallToPrintStackTrace
+                e.printStackTrace();
+            }
+        }
     }
 }

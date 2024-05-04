@@ -1,16 +1,15 @@
 package ituvtu.chat;
-
 import org.java_websocket.WebSocket;
 import org.java_websocket.server.WebSocketServer;
 import org.java_websocket.handshake.ClientHandshake;
 import java.net.InetSocketAddress;
-import java.util.HashSet;
-import java.util.Set;
+import java.util.*;
+import jakarta.xml.bind.JAXBException;
+
 
 public class Server extends WebSocketServer {
-
-    private Set<WebSocket> connections;
-    private Set<ServerObserver> observers;  // Множина спостерігачів
+    private final Set<WebSocket> connections;
+    private final Set<ServerObserver> observers;  // Множина спостерігачів
 
     public Server(int port) {
         super(new InetSocketAddress(port));
@@ -23,11 +22,6 @@ public class Server extends WebSocketServer {
         System.out.println("Observer added: " + observer.getClass().getName());
     }
 
-
-    public void removeObserver(ServerObserver observer) {
-        observers.remove(observer);
-    }
-
     private void notifyObservers(String message) {
         System.out.println("Notifying observers...");
         for (ServerObserver observer : observers) {
@@ -36,10 +30,9 @@ public class Server extends WebSocketServer {
         }
     }
 
-
     @Override
     public void onOpen(WebSocket conn, ClientHandshake handshake) {
-        InetSocketAddress remoteAddress = (InetSocketAddress) conn.getRemoteSocketAddress();
+        InetSocketAddress remoteAddress = conn.getRemoteSocketAddress();
         int port = remoteAddress.getPort();  // Отримуємо порт віддаленого з'єднання
         String logMessage = "New connection: " + port;
         System.out.println("New connection: " + port);
@@ -49,16 +42,16 @@ public class Server extends WebSocketServer {
     @Override
     public void onClose(WebSocket conn, int code, String reason, boolean remote) {
         connections.remove(conn);
-        InetSocketAddress remoteAddress = (InetSocketAddress) conn.getRemoteSocketAddress();
+        InetSocketAddress remoteAddress = conn.getRemoteSocketAddress();
         int port = remoteAddress.getPort();  // Отримуємо порт віддаленого з'єднання
         String logMessage = "Closed connection: " + port;
         System.out.println(logMessage);
         notifyObservers(logMessage);
     }
 
-    @Override
-    public void onMessage(WebSocket conn, String message) {
-        InetSocketAddress remoteAddress = (InetSocketAddress) conn.getRemoteSocketAddress();
+
+    public void onMessage1(WebSocket conn, String message) {
+        InetSocketAddress remoteAddress = conn.getRemoteSocketAddress();
         int port = remoteAddress.getPort();  // Отримуємо порт віддаленого з'єднання
         String logMessage = "Message from " + port + ": " + message;
         System.out.println(logMessage);
@@ -68,6 +61,20 @@ public class Server extends WebSocketServer {
         }
     }
 
+    @Override
+    public void onMessage(WebSocket conn, String message) {
+        try {
+            Message msg = XMLUtil.fromXML(message);
+            String logMessage = "Message from " + msg.getFrom() + ": " + msg.getContent();
+            System.out.println(logMessage);
+            notifyObservers(logMessage);
+            // Збережіть повідомлення в базу даних тут
+        } catch (JAXBException e) {
+            //noinspection CallToPrintStackTrace
+            e.printStackTrace();
+            conn.send("Error in message format");
+        }
+    }
 
     @Override
     public void onError(WebSocket conn, Exception ex) {
@@ -75,7 +82,7 @@ public class Server extends WebSocketServer {
             connections.remove(conn);
         }
         assert conn != null;
-        InetSocketAddress remoteAddress = (InetSocketAddress) conn.getRemoteSocketAddress();
+        InetSocketAddress remoteAddress = conn.getRemoteSocketAddress();
         int port = remoteAddress.getPort();  // Отримуємо порт віддаленого з'єднання
         String logMessage = "Error from " + port + ": " + ex.getMessage();
         System.out.println(logMessage);

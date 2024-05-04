@@ -4,9 +4,6 @@ import javafx.fxml.FXMLLoader;
 import javafx.scene.Parent;
 import javafx.scene.Scene;
 import javafx.stage.Stage;
-
-import java.util.Objects;
-
 public class ServerApp extends Application {
     private Server server;
     @Override
@@ -15,14 +12,12 @@ public class ServerApp extends Application {
         Parent root = loader.load();
         ServerController controller = loader.getController();
         Scene scene = new Scene(root);
-
         primaryStage.setTitle("Server");
         primaryStage.setScene(scene);
         primaryStage.show();
         server = new Server(12345);
         server.addObserver(controller);
         server.start();
-
     }
     @Override
     public void stop() {
@@ -35,7 +30,6 @@ public class ServerApp extends Application {
             }
         }
     }
-
     public static void main(String[] args) {
         launch(args);
     }

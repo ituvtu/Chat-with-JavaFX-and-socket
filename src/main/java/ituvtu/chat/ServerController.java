@@ -3,8 +3,6 @@ package ituvtu.chat;
 import javafx.application.Platform;
 import javafx.fxml.FXML;
 import javafx.scene.control.TextArea;
-import ituvtu.chat.ServerApp;
-import java.util.EventListener;
 
 public class ServerController implements ServerObserver {
     @FXML
@@ -18,7 +16,4 @@ public class ServerController implements ServerObserver {
             messagesArea.appendText(message + "\n");
         });
     }
-
-
-
 }
