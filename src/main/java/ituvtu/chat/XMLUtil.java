@@ -1,27 +1,34 @@
 package ituvtu.chat;
 
-import jakarta.xml.bind.JAXBContext;
-import jakarta.xml.bind.Marshaller;
-import jakarta.xml.bind.Unmarshaller;
-import jakarta.xml.bind.JAXBException;
-
-import java.io.StringReader;
-import java.io.StringWriter;
+import jakarta.xml.bind.*;
+import java.io.*;
+import java.util.concurrent.ConcurrentHashMap;
 
 public class XMLUtil {
-    public static String toXML(Message message) throws JAXBException {
-        JAXBContext context = JAXBContext.newInstance(Message.class);
+    private static final ConcurrentHashMap<Class<?>, JAXBContext> contextMap = new ConcurrentHashMap<>();
+
+    private static JAXBContext getContext(Class<?> clazz) {
+        return contextMap.computeIfAbsent(clazz, c -> {
+            try {
+                return JAXBContext.newInstance(c);
+            } catch (JAXBException e) {
+                throw new RuntimeException("Failed to create JAXBContext for class: " + c.getName(), e);
+            }
+        });
+    }
+
+    public static <T> String toXML(T obj) throws JAXBException {
+        JAXBContext context = getContext(obj.getClass());
         Marshaller marshaller = context.createMarshaller();
         marshaller.setProperty(Marshaller.JAXB_FORMATTED_OUTPUT, Boolean.TRUE);
         StringWriter writer = new StringWriter();
-        marshaller.marshal(message, writer);
+        marshaller.marshal(obj, writer);
         return writer.toString();
     }
 
-    public static Message fromXML(String xml) throws JAXBException {
-        JAXBContext context = JAXBContext.newInstance(Message.class);
+    public static <T> T fromXML(String xml, Class<T> clazz) throws JAXBException {
+        JAXBContext context = getContext(clazz);
         Unmarshaller unmarshaller = context.createUnmarshaller();
-        return (Message) unmarshaller.unmarshal(new StringReader(xml));
+        return clazz.cast(unmarshaller.unmarshal(new StringReader(xml)));
     }
 }
-

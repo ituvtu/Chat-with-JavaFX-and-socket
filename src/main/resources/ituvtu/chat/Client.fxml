@@ -4,7 +4,8 @@
 <?import javafx.scene.control.TextField?>
 <?import javafx.scene.layout.VBox?>
 <VBox alignment="CENTER" spacing="10.0" xmlns:fx="http://javafx.com/fxml/1" fx:controller="ituvtu.chat.ClientController">
-    <TextArea fx:id="messageArea" editable="false" prefHeight="200.0" prefWidth="300.0"/>
+    <TextField fx:id="recipientField" promptText="Enter recipient's username..." prefWidth="300.0"/>
+    <TextArea fx:id="messagesArea" editable="false" prefHeight="200.0" prefWidth="300.0"/>
     <TextField fx:id="inputField" promptText="Enter your message here..." prefWidth="300.0"/>
     <Button fx:id="sendButton" text="Send" onAction="#onSend"/>
 </VBox>

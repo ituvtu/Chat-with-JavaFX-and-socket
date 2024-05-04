@@ -4,6 +4,7 @@ module ituvtu.chat {
     requires org.java_websocket;
     //    requires java.xml.bind;
     requires jakarta.xml.bind;
+    requires java.sql;
     opens ituvtu.chat to jakarta.xml.bind, javafx.fxml;
     exports ituvtu.chat;
 }

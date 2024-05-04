@@ -22,10 +22,9 @@ public class ServerApp extends Application {
     @Override
     public void stop() {
         if (server != null) {
-            try {
-                server.stop();  // Правильний виклик для зупинки сервера
+            try {server.stop();
             } catch (InterruptedException e) {
-                Thread.currentThread().interrupt();  // Обробка переривання потоку
+                Thread.currentThread().interrupt();  // Thread interruption handling
                 System.err.println("Server failed to stop cleanly: " + e.getMessage());
             }
         }
