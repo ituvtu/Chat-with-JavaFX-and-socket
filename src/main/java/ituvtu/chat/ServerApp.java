@@ -1,9 +1,10 @@
 package ituvtu.chat;
+
 import javafx.application.Application;
 import javafx.fxml.FXMLLoader;
-import javafx.scene.Parent;
-import javafx.scene.Scene;
+import javafx.scene.*;
 import javafx.stage.Stage;
+
 public class ServerApp extends Application {
     private Server server;
     @Override

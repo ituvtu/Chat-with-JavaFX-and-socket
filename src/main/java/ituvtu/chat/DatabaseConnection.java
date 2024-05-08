@@ -1,20 +1,17 @@
 package ituvtu.chat;
 
-import java.io.IOException;
-import java.io.InputStream;
-import java.sql.Connection;
-import java.sql.DriverManager;
-import java.sql.SQLException;
-import java.util.Properties;
+import java.io.*;
+import java.sql.*;
+import java.util.*;
 
 public class DatabaseConnection {
     private static Connection connection = null;
 
     private DatabaseConnection() { }  // Private constructor
 
-    public static Connection getConnection() {
-        if (connection == null) {
-            try {
+    public static synchronized Connection getConnection() {
+        try {
+            if (connection == null || connection.isClosed()) {
                 // Initialize the connection
                 InputStream is = DatabaseConnection.class.getClassLoader().getResourceAsStream("db.properties");
                 Properties props = new Properties();
@@ -24,12 +21,11 @@ public class DatabaseConnection {
                 String user = props.getProperty("db.user");
                 String password = props.getProperty("db.password");
                 connection = DriverManager.getConnection(url, user, password);
-            } catch (SQLException e) {
-                System.err.println("Database connection failed: " + e.getMessage());
-                return null;
-            } catch (IOException e) {
-                throw new RuntimeException(e);
             }
+        } catch (SQLException e) {
+            System.err.println("Database connection failed: " + e.getMessage());
+        } catch (IOException e) {
+            throw new RuntimeException("Failed to load database properties: " + e);
         }
         return connection;
     }

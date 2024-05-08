@@ -2,10 +2,13 @@ package ituvtu.chat;
 
 import jakarta.xml.bind.annotation.*;
 
-@XmlRootElement
+@XmlRootElement(name = "message")
 public class Message {
+
     private String from;
+
     private String to;
+
     private String content;
 
     public Message() {
@@ -16,6 +19,7 @@ public class Message {
         this.to = to;
         this.content = content;
     }
+
     public String getFrom() {
         return from;
     }

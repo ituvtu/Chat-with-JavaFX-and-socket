@@ -31,4 +31,5 @@ public class XMLUtil {
         Unmarshaller unmarshaller = context.createUnmarshaller();
         return clazz.cast(unmarshaller.unmarshal(new StringReader(xml)));
     }
+
 }

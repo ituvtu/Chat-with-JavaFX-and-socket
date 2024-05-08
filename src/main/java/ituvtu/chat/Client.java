@@ -3,7 +3,6 @@ import org.java_websocket.client.WebSocketClient;
 import org.java_websocket.handshake.ServerHandshake;
 import java.net.*;
 import java.util.*;
-
 import jakarta.xml.bind.JAXBException;
 
 public class Client extends WebSocketClient {
@@ -17,7 +16,7 @@ public class Client extends WebSocketClient {
         return instance;
     }
 
-    private Client(String url) throws URISyntaxException {
+    Client(String url) throws URISyntaxException {
         super(new URI(url));
     }
     @Override
@@ -28,6 +27,7 @@ public class Client extends WebSocketClient {
         try {
             String xmlInfo = XMLUtil.toXML(info);
             send(xmlInfo);
+            ClientApp.getController().requestUserChats();
         } catch (JAXBException e) {
             System.err.println("Error serializing connection info: " + e.getMessage());
         }

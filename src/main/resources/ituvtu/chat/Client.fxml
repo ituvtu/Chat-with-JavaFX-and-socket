@@ -1,11 +1,19 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<?import javafx.scene.control.Button?>
-<?import javafx.scene.control.TextArea?>
-<?import javafx.scene.control.TextField?>
-<?import javafx.scene.layout.VBox?>
-<VBox alignment="CENTER" spacing="10.0" xmlns:fx="http://javafx.com/fxml/1" fx:controller="ituvtu.chat.ClientController">
-    <TextField fx:id="recipientField" promptText="Enter recipient's username..." prefWidth="300.0"/>
+<?import javafx.scene.control.*?>
+<?import javafx.scene.layout.*?>
+<VBox fx:controller="ituvtu.chat.ClientController" xmlns:fx="http://javafx.com/fxml/1" spacing="10">
+    <HBox spacing="5">
+        <TextField fx:id="newChatUsername" promptText="Enter username..." HBox.hgrow="ALWAYS"/>
+        <Button text="O" onAction="#requestUserChats"/>
+        <Button text="+" onAction="#createNewChat"/>
+        <Button text="-" onAction="#deleteChat"/>
+
+    </HBox>
+    <ListView fx:id="chatListView" prefHeight="200.0" prefWidth="300.0"/>
     <TextArea fx:id="messagesArea" editable="false" prefHeight="200.0" prefWidth="300.0"/>
-    <TextField fx:id="inputField" promptText="Enter your message here..." prefWidth="300.0"/>
-    <Button fx:id="sendButton" text="Send" onAction="#onSend"/>
+    <TextArea fx:id="logMessagesArea" editable="false" prefHeight="150.0" prefWidth="300.0" />
+    <HBox spacing="10">
+        <TextField fx:id="inputField" HBox.hgrow="ALWAYS"/>
+        <Button text="Send" onAction="#onSend"/>
+    </HBox>
 </VBox>
