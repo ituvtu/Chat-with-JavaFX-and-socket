@@ -19,10 +19,14 @@ public class Client extends WebSocketClient {
     Client(String url) throws URISyntaxException {
         super(new URI(url));
     }
+
     @Override
     public void onOpen(ServerHandshake handshake) {
-        int port = getURI().getPort();
-        System.out.println("Connected to the server. This client is connected to port: " + port);
+        System.out.println("Connected to server on port: " + getURI().getPort());
+        sendConnectionInfo();
+    }
+
+    private void sendConnectionInfo() {
         UserConnectionInfo info = new UserConnectionInfo(ClientApp.getUsername(), getURI().getPort());
         try {
             String xmlInfo = XMLUtil.toXML(info);
@@ -35,15 +39,10 @@ public class Client extends WebSocketClient {
 
     public void addObserver(ClientObserver observer) {
         observers.add(observer);
-        System.out.println("Observer added: " + observer.getClass().getName());
     }
 
     private void notifyObservers(String message) {
-        System.out.println("Notifying observers...");
-        for (ClientObserver observer : observers) {
-            System.out.println("\tNotifying observer: " + observer);
-            observer.onMessage(message);
-        }
+        observers.forEach(observer -> observer.onMessage(message));
     }
 
     @Override

@@ -14,39 +14,43 @@ import java.util.Objects;
 public class ClientController implements ClientObserver {
     private static ClientController instance;
 
-
-    public Button sendButton;
-    public TextField newChatUsername;
-    public TextArea logMessagesArea;
     @FXML
     private ListView<ChatDisplayData> chatListView;
 
     @FXML
     private TextArea messagesArea;
+
     @FXML
     private TextField inputField;
 
-    private Client client;  // Variable to hold a reference to the client
+    private Client client;
+
+    public Button sendButton;
+
+    public TextField newChatUsername;
+
+    public TextArea logMessagesArea;
 
     public ClientController() {}
 
-    public static ClientController getInstance() {
+    public static synchronized ClientController getInstance() {
         if (instance == null) {
             instance = new ClientController();
         }
         return instance;
     }
 
+    @FXML
     public void initialize() {
         chatListView.getSelectionModel().selectedItemProperty().addListener((obs, oldSelection, newSelection) -> {
             if (newSelection != null) {
-                loadChatMessages(Integer.parseInt(String.valueOf(newSelection.getChatId())));
+                loadChatMessages(newSelection.getChatId());
             }
         });
-
-
     }
-
+    public void setClient(Client client) {
+        this.client = client;
+    }
     private void loadChatMessages(int chatId) {
         messagesArea.clear();  // Очистка повідомлень
         try {
@@ -58,64 +62,72 @@ public class ClientController implements ClientObserver {
         }
     }
 
+    @Override
     public void onMessage(String xmlMessage) {
         if (xmlMessage.contains("<chatListResponse>")) {
-            try {
-                ChatListResponse response = XMLUtil.fromXML(xmlMessage, ChatListResponse.class);
-                updateChatList(response.getChats());
-            } catch (JAXBException e) {
-                displayLogMessage("Error parsing chat list: " + e.getMessage());
-            }
+            processChatListResponse(xmlMessage);
         } else if (xmlMessage.contains("<message>")) {
-            try {
-                Message message = XMLUtil.fromXML(xmlMessage, Message.class);
-                //displayMessage(message.getFrom() + ": " + message.getContent());
-
-                // Перевірка, чи активний чат є тим, з якого прийшло повідомлення
-                ChatDisplayData selectedChat = chatListView.getSelectionModel().getSelectedItem();
-                if (selectedChat != null && Objects.equals(message.getFrom(), selectedChat.getDisplayName())) {
-                    displayMessage(message.getFrom() + ": " + message.getContent());
-                }
-            } catch (JAXBException e) {
-                displayLogMessage("Error parsing XML: " + e.getMessage());
-            }
+            processMessage(xmlMessage);
         } else if (xmlMessage.contains("<messagesResponse>")) {
-            try {
-                JAXBContext context = JAXBContext.newInstance(MessagesResponse.class, Message.class);
-                Unmarshaller unmarshaller = context.createUnmarshaller();
-                StringReader reader = new StringReader(xmlMessage);
-                MessagesResponse response = (MessagesResponse) unmarshaller.unmarshal(reader);
-                updateMessagesArea(response.getMessages());
-            } catch (JAXBException e) {
-                displayMessage("Error parsing messages: " + e.getMessage());
-            }
-        }
-
-        else {
+            processMessagesResponse(xmlMessage);
+        } else {
             displayLogMessage(xmlMessage);
         }
     }
 
-
-    private void updateMessagesArea(List<Message> messages) {
-        messagesArea.clear();
-        for (Message message : messages) {
-            if(Objects.equals(message.getFrom(), ClientApp.getUsername())) {
-                displayMessage( "You: " + message.getContent());
-            }
-            else{
-            displayMessage(message.getFrom() + ": " + message.getContent());}
+    private void processChatListResponse(String xmlMessage) {
+        try {
+            ChatListResponse response = XMLUtil.fromXML(xmlMessage, ChatListResponse.class);
+            updateChatList(response.getChats());
+        } catch (Exception e) {
+            displayLogMessage("Error parsing chat list: " + e.getMessage());
         }
     }
+
+    private void processMessage(String xmlMessage) {
+        try {
+            Message message = XMLUtil.fromXML(xmlMessage, Message.class);
+            displayMessage(message.getFrom() + ": " + message.getContent());
+        } catch (Exception e) {
+            displayLogMessage("Error parsing XML: " + e.getMessage());
+        }
+    }
+    private void processMessagesResponse(String xmlMessage) {
+        try {
+            JAXBContext context = JAXBContext.newInstance(MessagesResponse.class, Message.class);
+            Unmarshaller unmarshaller = context.createUnmarshaller();
+            StringReader reader = new StringReader(xmlMessage);
+            MessagesResponse response = (MessagesResponse) unmarshaller.unmarshal(reader);
+            updateMessagesArea(response.getMessages());
+        } catch (Exception e) {
+            displayMessage("Error parsing messages: " + e.getMessage());
+        }
+    }
+
     private void updateChatList(List<Chat> chats) {
         Platform.runLater(() -> {
             chatListView.getItems().clear();
             for (Chat chat : chats) {
-                String displayName = chat.getChatDisplayName(ClientApp.getUsername());
-                int chatId = chat.getChat_id();
-                chatListView.getItems().add(new ChatDisplayData(chatId, displayName));
+                chatListView.getItems().add(new ChatDisplayData(chat.getChat_id(), chat.getChatDisplayName(ClientApp.getUsername())));
             }
         });
+    }
+    private void updateMessagesArea(List<Message> messages) {
+        Platform.runLater(() -> {
+            messagesArea.clear();
+            for (Message message : messages) {
+                String displayText = Objects.equals(message.getFrom(), ClientApp.getUsername()) ? "You: " + message.getContent() : message.getFrom() + ": " + message.getContent();
+                displayMessage(displayText);
+            }
+        });
+    }
+
+    private void displayMessage(String text) {
+        Platform.runLater(() -> messagesArea.appendText(text + "\n"));
+    }
+
+    private void displayLogMessage(String text) {
+        Platform.runLater(() -> messagesArea.appendText(text + "\n"));
     }
 
     public void setChatList(List<String> chats) {
@@ -139,13 +151,6 @@ public class ClientController implements ClientObserver {
         } else {
             displayLogMessage("Connection is not established. Please connect to the server first.");
         }
-    }
-
-    private void displayMessage(String text) {
-        messagesArea.appendText(text + "\n");
-    }
-    private void displayLogMessage(String text) {
-        logMessagesArea.appendText(text + "\n");
     }
 
     @FXML
@@ -184,9 +189,6 @@ public class ClientController implements ClientObserver {
         }
     }
 
-    public void setClient(Client client) {
-        this.client=client;
-    }
 
     public void closeWindow(ActionEvent actionEvent) {
     }
