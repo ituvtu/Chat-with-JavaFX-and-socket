@@ -5,21 +5,23 @@ import javafx.scene.control.TextField;
 
 public class LoginController {
 
+    public TextField passwordField;
     @FXML
     private TextField usernameField;
 
     public void handleLoginButton() {
         String username = usernameField.getText().trim();
-        if (!username.isEmpty()) {
-            ClientApp.setUsername(username); // Save the username
-            System.out.println("Logged in as: " + username);
-
-            try {
-                ClientApp.showMainScreen(); // Go to the main window
-                ClientApp.connectToServer(); // Now we connect to the server
-            } catch (Exception e) {
-                //noinspection CallToPrintStackTrace
-                e.printStackTrace();
+        String password = passwordField.getText().trim();
+        if (!username.isEmpty() && !password.isEmpty()) {
+            if (DatabaseManager.checkOrCreateUser(username, password)) {
+                ClientApp.setUsername(username);
+                try {
+                    ClientApp.showMainScreen();
+                } catch (Exception e) {
+                    e.printStackTrace();
+                }
+            } else {
+                System.out.println("Error logging in or creating account.");
             }
         }
     }

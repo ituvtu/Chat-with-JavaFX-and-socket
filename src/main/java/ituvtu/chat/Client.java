@@ -27,7 +27,7 @@ public class Client extends WebSocketClient {
         try {
             String xmlInfo = XMLUtil.toXML(info);
             send(xmlInfo);
-            ClientApp.getController().requestUserChats();
+            ClientApp.controller.requestUserChats();
         } catch (JAXBException e) {
             System.err.println("Error serializing connection info: " + e.getMessage());
         }

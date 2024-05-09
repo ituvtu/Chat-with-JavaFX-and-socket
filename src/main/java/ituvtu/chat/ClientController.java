@@ -8,6 +8,7 @@ import jakarta.xml.bind.*;
 
 import java.io.StringReader;
 import java.util.List;
+import java.util.Objects;
 
 
 public class ClientController implements ClientObserver {
@@ -68,7 +69,13 @@ public class ClientController implements ClientObserver {
         } else if (xmlMessage.contains("<message>")) {
             try {
                 Message message = XMLUtil.fromXML(xmlMessage, Message.class);
-                displayMessage(message.getFrom() + ": " + message.getContent());
+                //displayMessage(message.getFrom() + ": " + message.getContent());
+
+                // Перевірка, чи активний чат є тим, з якого прийшло повідомлення
+                ChatDisplayData selectedChat = chatListView.getSelectionModel().getSelectedItem();
+                if (selectedChat != null && Objects.equals(message.getFrom(), selectedChat.getDisplayName())) {
+                    displayMessage(message.getFrom() + ": " + message.getContent());
+                }
             } catch (JAXBException e) {
                 displayLogMessage("Error parsing XML: " + e.getMessage());
             }
@@ -93,7 +100,11 @@ public class ClientController implements ClientObserver {
     private void updateMessagesArea(List<Message> messages) {
         messagesArea.clear();
         for (Message message : messages) {
-            displayMessage(message.getFrom() + ": " + message.getContent());
+            if(Objects.equals(message.getFrom(), ClientApp.getUsername())) {
+                displayMessage( "You: " + message.getContent());
+            }
+            else{
+            displayMessage(message.getFrom() + ": " + message.getContent());}
         }
     }
     private void updateChatList(List<Chat> chats) {
@@ -116,12 +127,17 @@ public class ClientController implements ClientObserver {
 
     @FXML
     void requestUserChats() {
-        try {
-            ChatRequest request = new ChatRequest("getChats", ClientApp.getUsername(), null);
-            String requestXml = XMLUtil.toXML(request);
-            client.send(requestXml);
-        } catch (JAXBException e) {
-            displayLogMessage("Error creating chat list request: " + e.getMessage());
+        System.out.println(ClientApp.getUsername());
+        if (client != null && client.isOpen()) {
+            try {
+                ChatRequest request = new ChatRequest("getChats", ClientApp.getUsername(), null);
+                String requestXml = XMLUtil.toXML(request);
+                client.send(requestXml);
+            } catch (JAXBException e) {
+                displayLogMessage("Error creating chat list request: " + e.getMessage());
+            }
+        } else {
+            displayLogMessage("Connection is not established. Please connect to the server first.");
         }
     }
 
@@ -194,6 +210,7 @@ public class ClientController implements ClientObserver {
                     displayLogMessage("Chat request sent");
                     displayLogMessage(chatRequestXml);
                     displayLogMessage("Request to create chat with " + username2 + " sent.\n");
+                    requestUserChats();
                 } else {
                     displayLogMessage("Failed to create XML request.\n");
                 }
@@ -204,6 +221,7 @@ public class ClientController implements ClientObserver {
         } else {
             displayLogMessage("Please enter a valid username.\n");
         }
+
     }
 
     private boolean userExists(String username) {

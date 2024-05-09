@@ -10,20 +10,22 @@ public class ClientApp extends Application {
     static Client client;  // Added a field to reference the client's WebSocket
     private static Stage primaryStage; // Save the main scene for later access
     static String username;
+
     public static void initializeClient() throws URISyntaxException {
-        client = Client.getInstance("ws://localhost:12345"); // Створюємо клієнта один раз
+        client = new Client("ws://localhost:12345");
+        client.connect();
     }
+
     @Override
     public void start(Stage primaryStage) throws Exception {
-        ClientApp.primaryStage = primaryStage; // Remember the main scene
-        initializeClient();
+        ClientApp.primaryStage = primaryStage;
         showLoginScreen();
-
     }
     public void showLoginScreen() throws Exception {
         FXMLLoader loader = new FXMLLoader(getClass().getResource("Login.fxml"));
         Parent root = loader.load();
         Scene scene = new Scene(root);
+
         primaryStage.setTitle("Login");
         primaryStage.setScene(scene);
         primaryStage.show();
@@ -31,14 +33,16 @@ public class ClientApp extends Application {
     public static void showMainScreen() throws Exception {
         FXMLLoader loader = new FXMLLoader(ClientApp.class.getResource("Client.fxml"));
         Parent root = loader.load();
-        controller = loader.getController();
-        controller.setClient(client);
-        client.addObserver(controller);
 
         Scene scene = new Scene(root);
-        primaryStage.setTitle("Client: " + username);
+        primaryStage.setTitle("Client of " + username);
         primaryStage.setScene(scene);
         primaryStage.show();
+
+        controller = loader.getController();
+        initializeClient();
+        controller.setClient(client);
+        client.addObserver(controller);
     }
 
     public static void setUsername(String user) {
@@ -52,7 +56,7 @@ public class ClientApp extends Application {
     }
 
     public static void connectToServer() {
-        if (client != null) {
+        if (client != null && !client.isOpen()) {
             client.connect(); // Використовуємо вже створену інстанцію
         } else {
             System.out.println("Client is not initialized.");
@@ -61,7 +65,7 @@ public class ClientApp extends Application {
     @Override
     public void stop() {
         System.out.println("!STOPPED!");
-        if (client != null) {
+        if (client != null && client.isOpen()) {
             client.close();  // Closing the connection with the server
         }
     }
