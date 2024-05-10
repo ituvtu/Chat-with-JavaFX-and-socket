@@ -66,18 +66,11 @@ public class ClientApp extends Application {
         launch(args);
     }
 
-//    public static void connectToServer() {
-//        if (client != null && !client.isOpen()) {
-//            client.connect(); // Використовуємо вже створену інстанцію
-//        } else {
-//            System.out.println("Client is not initialized.");
-//        }
-//    }
     @Override
     public void stop() throws Exception {
         System.out.println("Application is stopping.");
         if (client != null && client.isOpen()) {
-            client.close();  // Closing the connection with the server
+            client.close();
         }
         super.stop();
     }

@@ -38,6 +38,7 @@ public class ServerController implements ServerObserver {
         processMessagesResponse(server.processServerGetMessagesRequest(chatId));
     }
     private void processMessagesResponse(String xmlMessage) {
+        //noinspection DuplicatedCode
         try {
             JAXBContext context = JAXBContext.newInstance(MessagesResponse.class);
             Unmarshaller unmarshaller = context.createUnmarshaller();
@@ -96,11 +97,14 @@ public class ServerController implements ServerObserver {
             handleMessage(conn, input);
         } else if (input.contains("<chatRequest>")) {
             handleChatRequest(conn, input);
-        } else {
+        }
+        else {
             System.out.println("Input is not supported format");
             conn.send("Unsupported input format");
         }
     }
+
+
 
     private void handleChatRequest(WebSocket conn, String input) throws JAXBException {
         ChatRequest chatRequest = XMLUtil.fromXML(input, ChatRequest.class);

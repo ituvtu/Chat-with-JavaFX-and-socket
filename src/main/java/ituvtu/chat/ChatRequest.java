@@ -29,6 +29,11 @@ public class ChatRequest {
 
     }
 
+    public ChatRequest(String deleteChat, int chatId) {
+    this.action = deleteChat;
+    this.chatId = chatId;
+    }
+
     public String getAction() {
         return action;
     }

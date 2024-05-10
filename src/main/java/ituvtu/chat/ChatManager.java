@@ -13,18 +13,16 @@ public class ChatManager {
         String sqlInsert = "INSERT INTO chat (username_first, username_second) VALUES (?, ?)";
         try (PreparedStatement checkStmt = dbConn.prepareStatement(sqlExists);
              PreparedStatement insertStmt = dbConn.prepareStatement(sqlInsert)) {
-            // Checking if a chat exists
             checkStmt.setString(1, username1);
             checkStmt.setString(2, username2);
             checkStmt.setString(3, username2);
             checkStmt.setString(4, username1);
             ResultSet rs = checkStmt.executeQuery();
-            if (rs.next()) { return false; /* Chat already exists */ }
-            // Create a new chat
+            if (rs.next()) { return false; }
             insertStmt.setString(1, username1);
             insertStmt.setString(2, username2);
             insertStmt.executeUpdate();
-            return true; // Chat successfully created
+            return true;
         } catch (SQLException e) {
             System.err.println("Database error: " + e.getMessage());
             return false;
@@ -85,14 +83,31 @@ public class ChatManager {
     }
 
     public boolean updateChat(int chatId, Map<String, String> parameters) {
-        // Реалізуйте логіку оновлення чату в базі даних
-        return true; // Припустимо, що оновлення завжди вдається
+        String sql = "UPDATE chat SET username_first = ?, username_second = ? WHERE chat_id = ?";
+        try (PreparedStatement stmt = dbConn.prepareStatement(sql)) {
+            stmt.setString(1, parameters.get("username_first"));
+            stmt.setString(2, parameters.get("username_second"));
+            stmt.setInt(3, chatId);
+            int affectedRows = stmt.executeUpdate();
+            return affectedRows > 0;
+        } catch (SQLException e) {
+            System.err.println("Database error during chat update: " + e.getMessage());
+            return false;
+        }
     }
 
     public boolean deleteChat(int chatId) {
-        // Реалізуйте логіку видалення чату в базі даних
-        return true; // Припустимо, що видалення завжди вдається
+        String sql = "DELETE FROM chat WHERE chat_id = ?";
+        try (PreparedStatement stmt = dbConn.prepareStatement(sql)) {
+            stmt.setInt(1, chatId);
+            int affectedRows = stmt.executeUpdate();
+            return affectedRows > 0;
+        } catch (SQLException e) {
+            System.err.println("Database error during chat deletion: " + e.getMessage());
+            return false;
+        }
     }
+
 
     public Integer getChatIdByUsernames(String username1, String username2) {
         String sql = "SELECT chat_id FROM chat WHERE (username_first = ? AND username_second = ?) OR (username_first = ? AND username_second = ?)";

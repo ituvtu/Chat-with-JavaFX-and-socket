@@ -5,7 +5,6 @@ import javafx.event.ActionEvent;
 import javafx.fxml.*;
 import javafx.scene.control.*;
 import jakarta.xml.bind.*;
-
 import java.io.StringReader;
 import java.util.List;
 import java.util.Objects;
@@ -53,7 +52,7 @@ public class ClientController implements ClientObserver {
     }
 
     private void loadChatMessages(int chatId) {
-        messagesArea.clear();  // Очистка повідомлень
+        messagesArea.clear();
         try {
             ChatRequest request = new ChatRequest("getMessages", chatId, ClientApp.getUsername());
             String requestXml = XMLUtil.toXML(request);
@@ -98,6 +97,7 @@ public class ClientController implements ClientObserver {
         }
     }
     private void processMessagesResponse(String xmlMessage) {
+        //noinspection DuplicatedCode
         try {
             JAXBContext context = JAXBContext.newInstance(MessagesResponse.class);
             Unmarshaller unmarshaller = context.createUnmarshaller();
@@ -131,7 +131,7 @@ public class ClientController implements ClientObserver {
     }
 
     private void displayLogMessage(String text) {
-        Platform.runLater(() -> messagesArea.appendText(text + "\n"));
+        Platform.runLater(() -> logMessagesArea.appendText(text + "\n"));
     }
 
     public void setChatList(List<String> chats) {
@@ -197,9 +197,6 @@ public class ClientController implements ClientObserver {
                 String chatRequestXml = XMLUtil.toXML(chatRequest);
                 if (chatRequestXml != null) {
                     client.send(chatRequestXml);
-                    displayLogMessage("Chat request sent");
-                    displayLogMessage(chatRequestXml);
-                    displayLogMessage("Request to create chat with " + username2 + " sent.\n");
                     requestUserChats();
                 } else {
                     displayLogMessage("Failed to create XML request.\n");
@@ -214,11 +211,6 @@ public class ClientController implements ClientObserver {
 
     }
 
-    private boolean userExists(String username) {
-        // Here, the logic for checking the existence of the user should be implemented
-        return true; // cap
-    }
-
     private void initiateNewChat(int chatId, String username) {
         ChatDisplayData newChat = new ChatDisplayData(chatId, username);
         Platform.runLater(() -> {
@@ -231,14 +223,21 @@ public class ClientController implements ClientObserver {
     private void deleteChat() {
         final int selectedIdx = chatListView.getSelectionModel().getSelectedIndex();
         if (selectedIdx != -1) {
-            String itemToRemove = String.valueOf(chatListView.getItems().get(selectedIdx));
+            ChatDisplayData selectedChat = chatListView.getItems().get(selectedIdx);
+            try {
+                ChatRequest deleteRequest = new ChatRequest("deleteChat", selectedChat.getChatId());
+                String requestXml = XMLUtil.toXML(deleteRequest);
+                client.send(requestXml);
+                chatListView.getItems().remove(selectedIdx);
+                displayLogMessage("Request to delete chat with " + selectedChat.getDisplayName() + " sent.\n");
+            } catch (JAXBException e) {
+                displayLogMessage("Error creating XML for delete chat request: " + e.getMessage());
+            }
 
-            // The logic for deleting a chat from the database can be added here
-            chatListView.getItems().remove(selectedIdx);
-            displayLogMessage("Chat with " + itemToRemove + " has been removed.\n");
         } else {
             displayLogMessage("Please select a chat to delete.\n");
         }
     }
+
 
 }

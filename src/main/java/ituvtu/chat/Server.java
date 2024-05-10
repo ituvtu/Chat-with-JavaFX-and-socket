@@ -122,7 +122,6 @@ public class Server extends WebSocketServer {
         updateDatabase(info.getUsername(), getPortConn(conn));
     }
 
-
     void recordMessageInDatabase(Message msg) {
         Integer chatId = chatManager.getChatIdByUsernames(msg.getFrom(), msg.getTo());
         if (chatId != null) {
@@ -204,6 +203,7 @@ public class Server extends WebSocketServer {
                 conn.send("Failed to send message");
             }
         }
+        updateChatList();
     }
 
     void processChatUpdateRequest(WebSocket conn, ChatRequest chatRequest) {
@@ -213,6 +213,7 @@ public class Server extends WebSocketServer {
         } else {
             conn.send("Failed to update chat.");
         }
+        updateChatList();
     }
 
     void processChatDeletionRequest(WebSocket conn, ChatRequest chatRequest) {
@@ -222,6 +223,7 @@ public class Server extends WebSocketServer {
         } else {
             conn.send("Failed to delete chat.");
         }
+        updateChatList();
     }
 
     void processGetChatsRequest(WebSocket conn, ChatRequest chatRequest) {
@@ -233,20 +235,44 @@ public class Server extends WebSocketServer {
             System.err.println("Error serializing chat list: " + e.getMessage());
             conn.send("Error processing your request for chat list");
         }
+        updateChatList();
     }
 
     void processChatCreationRequest(WebSocket conn, ChatRequest chatRequest) {
-        boolean chatExists = chatManager.chatExists(chatRequest.getUsername1(), chatRequest.getUsername2());
-        if (chatExists) {
-            conn.send("Chat already exists between " + chatRequest.getUsername1() + " and " + chatRequest.getUsername2() + ". Please find it in your chat list.");
-        } else {
-            boolean chatCreated = chatManager.createChat(chatRequest.getUsername1(), chatRequest.getUsername2());
-            if (chatCreated) {
-                conn.send("Chat created successfully between " + chatRequest.getUsername1() + " and " + chatRequest.getUsername2());
+        if(userExists(chatRequest.getUsername1()) && userExists(chatRequest.getUsername2())) {
+            boolean chatExists = chatManager.chatExists(chatRequest.getUsername1(), chatRequest.getUsername2());
+            if (chatExists) {
+                conn.send("Chat already exists between " + chatRequest.getUsername1() + " and " + chatRequest.getUsername2() + ". Please find it in your chat list.");
             } else {
-                conn.send("Failed to create chat or chat already exists.");
+                boolean chatCreated = chatManager.createChat(chatRequest.getUsername1(), chatRequest.getUsername2());
+                if (chatCreated) {
+                    conn.send("Chat created successfully between " + chatRequest.getUsername1() + " and " + chatRequest.getUsername2());
+                } else {
+                    conn.send("Failed to create chat or chat already exists.");
+                }
+            }
+            updateChatList();
+        }
+        else{
+            conn.send("Problems with usernames");
+        }
+
+    }
+    public boolean userExists(String username) {
+        String sql = "SELECT COUNT(*) FROM users WHERE username = ?";
+        if (dbConn != null) {
+            try (PreparedStatement stmt = dbConn.prepareStatement(sql)) {
+                stmt.setString(1, username);
+                ResultSet rs = stmt.executeQuery();
+                if (rs.next()) {
+                    return rs.getInt(1) > 0; // Повертає true, якщо користувач знайдений
+                }
+            } catch (SQLException e) {
+                System.err.println("Database error while checking user existence: " + e.getMessage());
             }
         }
+        return false;
+
     }
 
     void sendDirectMessage(Message msg) {
