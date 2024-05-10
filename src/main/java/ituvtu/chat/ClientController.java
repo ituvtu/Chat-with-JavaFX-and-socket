@@ -1,10 +1,10 @@
 package ituvtu.chat;
 
 import javafx.application.Platform;
-import javafx.event.ActionEvent;
 import javafx.fxml.*;
 import javafx.scene.control.*;
 import jakarta.xml.bind.*;
+
 import java.io.StringReader;
 import java.util.List;
 import java.util.Objects;
@@ -12,22 +12,14 @@ import java.util.Objects;
 
 public class ClientController implements ClientObserver {
     private static ClientController instance;
-
     @FXML
     private ListView<ChatDisplayData> chatListView;
-
     @FXML
     private TextArea messagesArea;
-
     @FXML
     private TextField inputField;
-
     private Client client;
-
-    public Button sendButton;
-
     public TextField newChatUsername;
-
     public TextArea logMessagesArea;
 
     public ClientController() {}
@@ -72,6 +64,8 @@ public class ClientController implements ClientObserver {
             processMessagesResponse(xmlMessage);
         } else if(xmlMessage.contains("<messagesResponse/>")) {
             //We don't need to output empty messages
+        } else if(xmlMessage.contains("<chatListResponse/>")){
+            //We don't need to output empty chatlist
         }
         else {
             displayLogMessage(xmlMessage);
@@ -178,15 +172,6 @@ public class ClientController implements ClientObserver {
         }
     }
 
-    public void closeWindow(ActionEvent actionEvent) {
-    }
-
-    public void maximizeWindow(ActionEvent actionEvent) {
-    }
-
-    public void minimizeWindow(ActionEvent actionEvent) {
-    }
-
     @FXML
     private void createNewChat() {
         System.out.println("Creating new chat");
@@ -238,6 +223,4 @@ public class ClientController implements ClientObserver {
             displayLogMessage("Please select a chat to delete.\n");
         }
     }
-
-
 }
