@@ -72,7 +72,7 @@ public class ClientController implements ClientObserver {
         } else if (xmlMessage.contains("<messagesResponse>")) {
             processMessagesResponse(xmlMessage);
         } else if(xmlMessage.contains("<messagesResponse/>")) {
-            displayMessage("This chat is empty.");
+            //We don't need to output empty messages
         }
         else {
             displayLogMessage(xmlMessage);
@@ -162,19 +162,13 @@ public class ClientController implements ClientObserver {
         if (client != null && client.isOpen()) {
             String messageContent = inputField.getText().trim();
             if (!messageContent.isEmpty()) {
-                try {
-                    String selectedChat = String.valueOf(chatListView.getSelectionModel().getSelectedItem());
-                    if (selectedChat != null) {
-                        Message message = new Message(ClientApp.getUsername(), selectedChat, messageContent);
-                        String xmlMessage = XMLUtil.toXML(message);
-                        client.send(xmlMessage);
-                        inputField.clear();
-                        displayMessage("You: " + messageContent);
-                    } else {
-                        displayLogMessage("Select a chat to send the message.");
-                    }
-                } catch (JAXBException e) {
-                    displayLogMessage("Error creating XML for message: " + e.getMessage());
+                String selectedChat = String.valueOf(chatListView.getSelectionModel().getSelectedItem());
+                if (selectedChat != null) {
+                    client.sendMessage(ClientApp.getUsername(), selectedChat, messageContent);
+                    inputField.clear();
+                    displayMessage("You: " + messageContent);
+                } else {
+                    displayLogMessage("Select a chat to send the message.");
                 }
             } else {
                 displayLogMessage("Message cannot be empty.");
