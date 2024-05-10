@@ -187,8 +187,6 @@ public class Server extends WebSocketServer {
             String messagesXml = XMLUtil.toXML(new MessagesResponse(messages));
             System.out.println("Sending XML: " + messagesXml);
             conn.send(messagesXml);
-
-            conn.send(messagesXml);
         } catch (JAXBException e) {
             conn.send("Error serializing messages");
         }

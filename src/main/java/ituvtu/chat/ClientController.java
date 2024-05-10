@@ -51,6 +51,7 @@ public class ClientController implements ClientObserver {
     public void setClient(Client client) {
         this.client = client;
     }
+
     private void loadChatMessages(int chatId) {
         messagesArea.clear();  // Очистка повідомлень
         try {
@@ -70,7 +71,10 @@ public class ClientController implements ClientObserver {
             processMessage(xmlMessage);
         } else if (xmlMessage.contains("<messagesResponse>")) {
             processMessagesResponse(xmlMessage);
-        } else {
+        } else if(xmlMessage.contains("<messagesResponse/>")) {
+            displayMessage("This chat is empty.");
+        }
+        else {
             displayLogMessage(xmlMessage);
         }
     }
@@ -85,6 +89,7 @@ public class ClientController implements ClientObserver {
     }
 
     private void processMessage(String xmlMessage) {
+
         try {
             Message message = XMLUtil.fromXML(xmlMessage, Message.class);
             displayMessage(message.getFrom() + ": " + message.getContent());
@@ -94,7 +99,7 @@ public class ClientController implements ClientObserver {
     }
     private void processMessagesResponse(String xmlMessage) {
         try {
-            JAXBContext context = JAXBContext.newInstance(MessagesResponse.class, Message.class);
+            JAXBContext context = JAXBContext.newInstance(MessagesResponse.class);
             Unmarshaller unmarshaller = context.createUnmarshaller();
             StringReader reader = new StringReader(xmlMessage);
             MessagesResponse response = (MessagesResponse) unmarshaller.unmarshal(reader);
@@ -103,7 +108,6 @@ public class ClientController implements ClientObserver {
             displayMessage("Error parsing messages: " + e.getMessage());
         }
     }
-
     private void updateChatList(List<Chat> chats) {
         Platform.runLater(() -> {
             chatListView.getItems().clear();
@@ -159,21 +163,12 @@ public class ClientController implements ClientObserver {
             String messageContent = inputField.getText().trim();
             if (!messageContent.isEmpty()) {
                 try {
-                    // Отримання вибраного чату
                     String selectedChat = String.valueOf(chatListView.getSelectionModel().getSelectedItem());
                     if (selectedChat != null) {
-                        // Ідентифікатор чату може бути вилучений або оброблений відповідним чином тут
-                        // Наприклад, ви могли б зберігати id чату замість назви
-
-                        // Створення та відправка повідомлення
                         Message message = new Message(ClientApp.getUsername(), selectedChat, messageContent);
                         String xmlMessage = XMLUtil.toXML(message);
                         client.send(xmlMessage);
-
-                        // Очистка поля введення після відправки
                         inputField.clear();
-
-                        // Опціонально: Додати повідомлення до вікна чату
                         displayMessage("You: " + messageContent);
                     } else {
                         displayLogMessage("Select a chat to send the message.");
@@ -188,7 +183,6 @@ public class ClientController implements ClientObserver {
             displayLogMessage("No client connected.");
         }
     }
-
 
     public void closeWindow(ActionEvent actionEvent) {
     }
