@@ -11,7 +11,6 @@ import java.util.Properties;
 
 public class ServerApp extends Application {
     private static Server server;
-    private static ServerController controller;
 
     public static void initializeServer() throws Exception {
         if (server == null) {
@@ -29,7 +28,7 @@ public class ServerApp extends Application {
         FXMLLoader loader = new FXMLLoader(getClass().getResource("Server.fxml"));
         loader.setControllerFactory(c -> ServerController.getInstance(server));  // Використання factory для створення контролера
         Parent root = loader.load();
-        controller = loader.getController();
+        ServerController controller = loader.getController();
 
         initializeServer();
         controller.setServer(server);

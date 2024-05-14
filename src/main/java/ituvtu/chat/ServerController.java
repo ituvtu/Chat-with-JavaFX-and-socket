@@ -5,10 +5,12 @@ import jakarta.xml.bind.JAXBException;
 import jakarta.xml.bind.Unmarshaller;
 import javafx.application.Platform;
 import javafx.fxml.FXML;
-import javafx.scene.control.*;
+import javafx.scene.control.ListView;
+import javafx.scene.control.TextArea;
 import org.java_websocket.WebSocket;
-import java.io.*;
-import java.util.*;
+
+import java.io.StringReader;
+import java.util.List;
 
 public class ServerController implements ServerObserver {
     private static ServerController instance;
@@ -26,7 +28,7 @@ public class ServerController implements ServerObserver {
         chatListView.getSelectionModel().selectedItemProperty().addListener((obs, oldSelection, newSelection) -> {
             if (newSelection != null) {
                 try {
-                    loadMessagesForChat(newSelection.getChatId());
+                    loadMessagesForChat(newSelection.chatId());
                 } catch (JAXBException e) {
                     throw new RuntimeException(e);
                 }
@@ -38,7 +40,6 @@ public class ServerController implements ServerObserver {
         processMessagesResponse(server.processServerGetMessagesRequest(chatId));
     }
     private void processMessagesResponse(String xmlMessage) {
-        //noinspection DuplicatedCode
         try {
             JAXBContext context = JAXBContext.newInstance(MessagesResponse.class);
             Unmarshaller unmarshaller = context.createUnmarshaller();

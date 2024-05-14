@@ -10,7 +10,7 @@
 
     </HBox>
     <ListView fx:id="chatListView" prefHeight="200.0" prefWidth="300.0"/>
-    <TextArea fx:id="messagesArea" editable="false" prefHeight="200.0" prefWidth="300.0"/>
+    <VBox fx:id="messagesArea" prefHeight="200.0" prefWidth="300.0"/>
     <TextArea fx:id="logMessagesArea" editable="false" prefHeight="150.0" prefWidth="300.0" />
     <HBox spacing="10">
         <TextField fx:id="inputField" HBox.hgrow="ALWAYS"/>

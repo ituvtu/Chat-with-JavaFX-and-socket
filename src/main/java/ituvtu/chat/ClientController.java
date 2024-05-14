@@ -1,9 +1,17 @@
 package ituvtu.chat;
 
+import jakarta.xml.bind.JAXBContext;
+import jakarta.xml.bind.JAXBException;
+import jakarta.xml.bind.Unmarshaller;
 import javafx.application.Platform;
-import javafx.fxml.*;
-import javafx.scene.control.*;
-import jakarta.xml.bind.*;
+import javafx.fxml.FXML;
+import javafx.geometry.Pos;
+import javafx.scene.control.Label;
+import javafx.scene.control.ListView;
+import javafx.scene.control.TextArea;
+import javafx.scene.control.TextField;
+import javafx.scene.layout.HBox;
+import javafx.scene.layout.VBox;
 
 import java.io.StringReader;
 import java.util.List;
@@ -15,7 +23,7 @@ public class ClientController implements ClientObserver {
     @FXML
     private ListView<ChatDisplayData> chatListView;
     @FXML
-    private TextArea messagesArea;
+    private VBox messagesArea;
     @FXML
     private TextField inputField;
     private Client client;
@@ -35,7 +43,7 @@ public class ClientController implements ClientObserver {
     public void initialize() {
         chatListView.getSelectionModel().selectedItemProperty().addListener((obs, oldSelection, newSelection) -> {
             if (newSelection != null) {
-                loadChatMessages(newSelection.getChatId());
+                loadChatMessages(newSelection.chatId());
             }
         });
     }
@@ -44,13 +52,13 @@ public class ClientController implements ClientObserver {
     }
 
     private void loadChatMessages(int chatId) {
-        messagesArea.clear();
+        messagesArea.getChildren().clear();
         try {
             ChatRequest request = new ChatRequest("getMessages", chatId, ClientApp.getUsername());
             String requestXml = XMLUtil.toXML(request);
             client.send(requestXml);
         } catch (JAXBException e) {
-            displayMessage("Error requesting chat messages: " + e.getMessage());
+            displayLogMessage("Error requesting chat messages: " + e.getMessage());
         }
     }
 
@@ -62,9 +70,11 @@ public class ClientController implements ClientObserver {
             processMessage(xmlMessage);
         } else if (xmlMessage.contains("<messagesResponse>")) {
             processMessagesResponse(xmlMessage);
-        } else if(xmlMessage.contains("<messagesResponse/>")) {
+        } else //noinspection StatementWithEmptyBody
+            if(xmlMessage.contains("<messagesResponse/>")) {
             //We don't need to output empty messages
-        } else if(xmlMessage.contains("<chatListResponse/>")){
+        } else //noinspection StatementWithEmptyBody
+                if(xmlMessage.contains("<chatListResponse/>")){
             //We don't need to output empty chatlist
         }
         else {
@@ -82,16 +92,15 @@ public class ClientController implements ClientObserver {
     }
 
     private void processMessage(String xmlMessage) {
-
         try {
             Message message = XMLUtil.fromXML(xmlMessage, Message.class);
-            displayMessage(message.getFrom() + ": " + message.getContent());
+            displayMessage(message);
         } catch (Exception e) {
             displayLogMessage("Error parsing XML: " + e.getMessage());
         }
     }
+
     private void processMessagesResponse(String xmlMessage) {
-        //noinspection DuplicatedCode
         try {
             JAXBContext context = JAXBContext.newInstance(MessagesResponse.class);
             Unmarshaller unmarshaller = context.createUnmarshaller();
@@ -99,7 +108,7 @@ public class ClientController implements ClientObserver {
             MessagesResponse response = (MessagesResponse) unmarshaller.unmarshal(reader);
             updateMessagesArea(response.getMessages());
         } catch (Exception e) {
-            displayMessage("Error parsing messages: " + e.getMessage());
+            displayLogMessage("Error parsing messages: " + e.getMessage());
         }
     }
     private void updateChatList(List<Chat> chats) {
@@ -112,16 +121,32 @@ public class ClientController implements ClientObserver {
     }
     private void updateMessagesArea(List<Message> messages) {
         Platform.runLater(() -> {
-            messagesArea.clear();
+            messagesArea.getChildren().clear();
             for (Message message : messages) {
                 String displayText = Objects.equals(message.getFrom(), ClientApp.getUsername()) ? "You: " + message.getContent() : message.getFrom() + ": " + message.getContent();
-                displayMessage(displayText);
+                displayMessage(message);
             }
         });
     }
 
-    private void displayMessage(String text) {
-        Platform.runLater(() -> messagesArea.appendText(text + "\n"));
+    private void displayMessage(Message message) {
+        Platform.runLater(() -> {
+            HBox messageBox = new HBox();
+            Label messageLabel = new Label();
+
+            if (Objects.equals(message.getFrom(), ClientApp.getUsername())) {
+                messageLabel.setText("You: " + message.getContent());
+                messageBox.setAlignment(Pos.CENTER_RIGHT);
+                messageLabel.setStyle("-fx-background-color: lightblue; -fx-padding: 10; -fx-background-radius: 10;");
+            } else {
+                messageLabel.setText(message.getFrom() + ": " + message.getContent());
+                messageBox.setAlignment(Pos.CENTER_LEFT);
+                messageLabel.setStyle("-fx-background-color: lightgray; -fx-padding: 10; -fx-background-radius: 10;");
+            }
+
+            messageBox.getChildren().add(messageLabel);
+            messagesArea.getChildren().add(messageBox);
+        });
     }
 
     private void displayLogMessage(String text) {
@@ -131,9 +156,13 @@ public class ClientController implements ClientObserver {
     public void setChatList(List<String> chats) {
         Platform.runLater(() -> {
             chatListView.getItems().clear();
-            chatListView.getItems().addAll((ChatDisplayData) chats);
+            int chatId = 1; // Приклад генерації ідентифікатора для кожного чату
+            for (String chat : chats) {
+                chatListView.getItems().add(new ChatDisplayData(chatId++, chat));
+            }
         });
     }
+
 
     @FXML
     void requestUserChats() {
@@ -160,7 +189,8 @@ public class ClientController implements ClientObserver {
                 if (selectedChat != null) {
                     client.sendMessage(ClientApp.getUsername(), selectedChat, messageContent);
                     inputField.clear();
-                    displayMessage("You: " + messageContent);
+                    Message message = new Message(ClientApp.getUsername(), selectedChat, messageContent);
+                    displayMessage(message);
                 } else {
                     displayLogMessage("Select a chat to send the message.");
                 }
@@ -171,6 +201,7 @@ public class ClientController implements ClientObserver {
             displayLogMessage("No client connected.");
         }
     }
+
 
     @FXML
     private void createNewChat() {
@@ -200,7 +231,7 @@ public class ClientController implements ClientObserver {
         ChatDisplayData newChat = new ChatDisplayData(chatId, username);
         Platform.runLater(() -> {
             chatListView.getItems().add(newChat);
-            messagesArea.appendText("New chat started with " + username + ".\n");
+            logMessagesArea.appendText("New chat started with " + username + ".\n");
         });
     }
 
@@ -210,11 +241,11 @@ public class ClientController implements ClientObserver {
         if (selectedIdx != -1) {
             ChatDisplayData selectedChat = chatListView.getItems().get(selectedIdx);
             try {
-                ChatRequest deleteRequest = new ChatRequest("deleteChat", selectedChat.getChatId());
+                ChatRequest deleteRequest = new ChatRequest("deleteChat", selectedChat.chatId());
                 String requestXml = XMLUtil.toXML(deleteRequest);
                 client.send(requestXml);
                 chatListView.getItems().remove(selectedIdx);
-                displayLogMessage("Request to delete chat with " + selectedChat.getDisplayName() + " sent.\n");
+                displayLogMessage("Request to delete chat with " + selectedChat.displayName() + " sent.\n");
             } catch (JAXBException e) {
                 displayLogMessage("Error creating XML for delete chat request: " + e.getMessage());
             }
