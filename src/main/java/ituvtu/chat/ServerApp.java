@@ -7,6 +7,7 @@ import javafx.scene.Scene;
 import javafx.stage.Stage;
 
 import java.io.InputStream;
+import java.util.Objects;
 import java.util.Properties;
 
 public class ServerApp extends Application {
@@ -18,7 +19,7 @@ public class ServerApp extends Application {
             Properties props = new Properties();
             props.load(is);
             int port = Integer.parseInt(props.getProperty("srv.port"));
-            server = Server.getInstance(port);  // Переконайтеся, що Server підтримує синглтон з методом getInstance
+            server = Server.getInstance(port);
             server.start();
         }
     }
@@ -26,7 +27,7 @@ public class ServerApp extends Application {
     @Override
     public void start(Stage primaryStage) throws Exception {
         FXMLLoader loader = new FXMLLoader(getClass().getResource("Server.fxml"));
-        loader.setControllerFactory(c -> ServerController.getInstance(server));  // Використання factory для створення контролера
+        loader.setControllerFactory(c -> ServerController.getInstance(server));
         Parent root = loader.load();
         ServerController controller = loader.getController();
 
@@ -36,6 +37,7 @@ public class ServerApp extends Application {
 
 
         Scene scene = new Scene(root);
+        scene.getStylesheets().add(Objects.requireNonNull(getClass().getResource("server-styles.css")).toExternalForm());
         primaryStage.setTitle("Server");
         primaryStage.setScene(scene);
         primaryStage.show();

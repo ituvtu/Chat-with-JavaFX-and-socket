@@ -1,22 +1,27 @@
 package ituvtu.chat;
 
+
 import jakarta.xml.bind.JAXBContext;
 import jakarta.xml.bind.JAXBException;
 import jakarta.xml.bind.Unmarshaller;
 import javafx.application.Platform;
 import javafx.fxml.FXML;
 import javafx.geometry.Pos;
-import javafx.scene.control.Label;
-import javafx.scene.control.ListView;
-import javafx.scene.control.TextArea;
-import javafx.scene.control.TextField;
+import javafx.scene.control.*;
 import javafx.scene.layout.HBox;
+import javafx.scene.layout.StackPane;
 import javafx.scene.layout.VBox;
+import javafx.scene.text.Text;
+import javafx.scene.text.TextFlow;
+import javafx.util.Callback;
 
 import java.io.StringReader;
+import java.time.LocalDate;
+import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
 import java.util.List;
+import java.util.Locale;
 import java.util.Objects;
-
 
 public class ClientController implements ClientObserver {
     private static ClientController instance;
@@ -25,10 +30,14 @@ public class ClientController implements ClientObserver {
     @FXML
     private VBox messagesArea;
     @FXML
+    private ScrollPane scrollPane;
+    @FXML
     private TextField inputField;
     private Client client;
     public TextField newChatUsername;
     public TextArea logMessagesArea;
+    private LocalDate currentDisplayedDate = null;
+    private int currentChatId = -1; // Зберігання ID поточного чату
 
     public ClientController() {}
 
@@ -41,12 +50,42 @@ public class ClientController implements ClientObserver {
 
     @FXML
     public void initialize() {
+        chatListView.setCellFactory(new Callback<>() {
+            @Override
+            public ListCell<ChatDisplayData> call(ListView<ChatDisplayData> listView) {
+                return new ListCell<>() {
+                    @Override
+                    protected void updateItem(ChatDisplayData item, boolean empty) {
+                        super.updateItem(item, empty);
+                        if (empty || item == null) {
+                            setGraphic(null);
+                            setText(null);
+                        } else {
+                            setText(item.toString());
+                        }
+                    }
+                };
+            }
+        });
+
+        // Загрузка стилів для всіх елементів
+        String stylesheet = Objects.requireNonNull(getClass().getResource("client-styles.css")).toExternalForm();
+        scrollPane.getStylesheets().add(stylesheet);
+        chatListView.getStylesheets().add(stylesheet);
+        logMessagesArea.getStylesheets().add(stylesheet);
+
         chatListView.getSelectionModel().selectedItemProperty().addListener((obs, oldSelection, newSelection) -> {
             if (newSelection != null) {
+                currentChatId = newSelection.chatId(); // Оновлення ID поточного чату
                 loadChatMessages(newSelection.chatId());
             }
         });
+
+        // Make the ScrollPane always scroll to the bottom when new messages are added
+        messagesArea.heightProperty().addListener((observable, oldValue, newValue) -> scrollPane.setVvalue(1.0));
     }
+
+
     public void setClient(Client client) {
         this.client = client;
     }
@@ -70,14 +109,11 @@ public class ClientController implements ClientObserver {
             processMessage(xmlMessage);
         } else if (xmlMessage.contains("<messagesResponse>")) {
             processMessagesResponse(xmlMessage);
-        } else //noinspection StatementWithEmptyBody
-            if(xmlMessage.contains("<messagesResponse/>")) {
-            //We don't need to output empty messages
-        } else //noinspection StatementWithEmptyBody
-                if(xmlMessage.contains("<chatListResponse/>")){
-            //We don't need to output empty chatlist
-        }
-        else {
+        } else if (xmlMessage.contains("<messagesResponse/>")) {
+            // We don't need to output empty messages
+        } else if (xmlMessage.contains("<chatListResponse/>")) {
+            // We don't need to output empty chat list
+        } else {
             displayLogMessage(xmlMessage);
         }
     }
@@ -94,7 +130,10 @@ public class ClientController implements ClientObserver {
     private void processMessage(String xmlMessage) {
         try {
             Message message = XMLUtil.fromXML(xmlMessage, Message.class);
-            displayMessage(message);
+            ChatDisplayData selectedChat = chatListView.getSelectionModel().getSelectedItem();
+            if (selectedChat != null && message.getChatId() == selectedChat.chatId()) {
+                displayMessage(message);
+            }
         } catch (Exception e) {
             displayLogMessage("Error parsing XML: " + e.getMessage());
         }
@@ -111,42 +150,89 @@ public class ClientController implements ClientObserver {
             displayLogMessage("Error parsing messages: " + e.getMessage());
         }
     }
+
     private void updateChatList(List<Chat> chats) {
         Platform.runLater(() -> {
             chatListView.getItems().clear();
             for (Chat chat : chats) {
-                chatListView.getItems().add(new ChatDisplayData(chat.getChat_id(), chat.getChatDisplayName(ClientApp.getUsername())));
+                chatListView.getItems().add(new ChatDisplayData(chat.getChat_id(), chat.getChatDisplayName(ClientApp.getUsername()), chat.getUsernameFirst(), chat.getUsernameSecond()));
             }
         });
     }
+
     private void updateMessagesArea(List<Message> messages) {
         Platform.runLater(() -> {
             messagesArea.getChildren().clear();
+            currentDisplayedDate = null;
             for (Message message : messages) {
-                String displayText = Objects.equals(message.getFrom(), ClientApp.getUsername()) ? "You: " + message.getContent() : message.getFrom() + ": " + message.getContent();
-                displayMessage(message);
+                // Перевірка чи повідомлення належить до поточного чату
+                if (currentChatId == message.getChatId()) {
+                    displayMessage(message);
+                }
             }
         });
     }
 
     private void displayMessage(Message message) {
         Platform.runLater(() -> {
-            HBox messageBox = new HBox();
-            Label messageLabel = new Label();
+            LocalDateTime timestamp = message.getTimestamp();
+            LocalDate messageDate = timestamp.toLocalDate();
 
-            if (Objects.equals(message.getFrom(), ClientApp.getUsername())) {
-                messageLabel.setText("You: " + message.getContent());
-                messageBox.setAlignment(Pos.CENTER_RIGHT);
-                messageLabel.setStyle("-fx-background-color: lightblue; -fx-padding: 10; -fx-background-radius: 10;");
-            } else {
-                messageLabel.setText(message.getFrom() + ": " + message.getContent());
-                messageBox.setAlignment(Pos.CENTER_LEFT);
-                messageLabel.setStyle("-fx-background-color: lightgray; -fx-padding: 10; -fx-background-radius: 10;");
+            // Додавання лейбла з датою, якщо дата змінилася
+            if (currentDisplayedDate == null || !currentDisplayedDate.equals(messageDate)) {
+                currentDisplayedDate = messageDate;
+                String formattedDate = formatDate(messageDate);
+                Label dateLabel = new Label(formattedDate);
+                dateLabel.setAlignment(Pos.CENTER);
+                dateLabel.getStyleClass().add("date-label");
+                HBox dateBox = new HBox();
+                dateBox.setAlignment(Pos.CENTER);
+                dateBox.getChildren().add(dateLabel);
+                messagesArea.getChildren().add(dateBox);
             }
 
-            messageBox.getChildren().add(messageLabel);
+            VBox messageBox = new VBox();
+            Label senderLabel = new Label(message.getFrom());
+            senderLabel.getStyleClass().add("sender-label");
+
+            Text messageText = new Text(message.getContent());
+            messageText.setWrappingWidth(300);
+            messageText.getStyleClass().add("message-text");
+
+            TextFlow messageFlow = new TextFlow(messageText);
+            messageFlow.setMaxWidth(300);
+            messageFlow.getStyleClass().add("message-text-flow");
+
+            Label timeLabel = new Label(timestamp.format(DateTimeFormatter.ofPattern("HH:mm")));
+            timeLabel.getStyleClass().add("time-label");
+
+            HBox messageContainer = new HBox();
+            messageContainer.setMaxWidth(300);
+
+            StackPane textContainer = new StackPane(messageFlow);
+            textContainer.setMaxWidth(300);
+
+            messageContainer.getChildren().add(textContainer);
+
+            if (message.getFrom().equals(ClientApp.getUsername())) {
+                messageBox.setAlignment(Pos.CENTER_LEFT);
+                messageContainer.setAlignment(Pos.CENTER_LEFT);
+                textContainer.getStyleClass().add("text-container-left");
+            } else {
+                messageBox.setAlignment(Pos.CENTER_RIGHT);
+                messageContainer.setAlignment(Pos.CENTER_RIGHT);
+                textContainer.getStyleClass().add("text-container-right");
+            }
+
+            messageBox.getChildren().addAll(senderLabel, messageContainer, timeLabel);
             messagesArea.getChildren().add(messageBox);
         });
+    }
+
+
+    private String formatDate(LocalDate date) {
+        DateTimeFormatter formatter = DateTimeFormatter.ofPattern("dd MMMM", Locale.getDefault());
+        return date.format(formatter);
     }
 
     private void displayLogMessage(String text) {
@@ -156,17 +242,15 @@ public class ClientController implements ClientObserver {
     public void setChatList(List<String> chats) {
         Platform.runLater(() -> {
             chatListView.getItems().clear();
-            int chatId = 1; // Приклад генерації ідентифікатора для кожного чату
+            int chatId = 1;
             for (String chat : chats) {
-                chatListView.getItems().add(new ChatDisplayData(chatId++, chat));
+                chatListView.getItems().add(new ChatDisplayData(chatId++, chat, null, null));
             }
         });
     }
 
-
     @FXML
     void requestUserChats() {
-        System.out.println(ClientApp.getUsername());
         if (client != null && client.isOpen()) {
             try {
                 ChatRequest request = new ChatRequest("getChats", ClientApp.getUsername(), null);
@@ -185,11 +269,12 @@ public class ClientController implements ClientObserver {
         if (client != null && client.isOpen()) {
             String messageContent = inputField.getText().trim();
             if (!messageContent.isEmpty()) {
-                String selectedChat = String.valueOf(chatListView.getSelectionModel().getSelectedItem());
+                ChatDisplayData selectedChat = chatListView.getSelectionModel().getSelectedItem();
                 if (selectedChat != null) {
-                    client.sendMessage(ClientApp.getUsername(), selectedChat, messageContent);
+                    int chatId = selectedChat.chatId();  // Отримання chatId
+                    Message message = new Message(ClientApp.getUsername(), selectedChat.displayName(), messageContent, chatId);
+                    client.sendMessage(ClientApp.getUsername(), selectedChat.displayName(), messageContent, chatId);
                     inputField.clear();
-                    Message message = new Message(ClientApp.getUsername(), selectedChat, messageContent);
                     displayMessage(message);
                 } else {
                     displayLogMessage("Select a chat to send the message.");
@@ -201,7 +286,6 @@ public class ClientController implements ClientObserver {
             displayLogMessage("No client connected.");
         }
     }
-
 
     @FXML
     private void createNewChat() {
@@ -224,11 +308,10 @@ public class ClientController implements ClientObserver {
         } else {
             displayLogMessage("Please enter a valid username.\n");
         }
-
     }
 
     private void initiateNewChat(int chatId, String username) {
-        ChatDisplayData newChat = new ChatDisplayData(chatId, username);
+        ChatDisplayData newChat = new ChatDisplayData(chatId, username, null, null);
         Platform.runLater(() -> {
             chatListView.getItems().add(newChat);
             logMessagesArea.appendText("New chat started with " + username + ".\n");
@@ -249,7 +332,6 @@ public class ClientController implements ClientObserver {
             } catch (JAXBException e) {
                 displayLogMessage("Error creating XML for delete chat request: " + e.getMessage());
             }
-
         } else {
             displayLogMessage("Please select a chat to delete.\n");
         }

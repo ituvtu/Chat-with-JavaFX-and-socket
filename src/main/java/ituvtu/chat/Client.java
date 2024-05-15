@@ -1,9 +1,13 @@
 package ituvtu.chat;
+
+import jakarta.xml.bind.JAXBException;
 import org.java_websocket.client.WebSocketClient;
 import org.java_websocket.handshake.ServerHandshake;
-import java.net.*;
-import java.util.*;
-import jakarta.xml.bind.JAXBException;
+
+import java.net.URI;
+import java.net.URISyntaxException;
+import java.util.HashSet;
+import java.util.Set;
 
 public class Client extends WebSocketClient {
     private static Client instance;
@@ -50,9 +54,9 @@ public class Client extends WebSocketClient {
         notifyObservers(message);
     }
 
-    public void sendMessage(String from, String recipient, String content) {
+    public void sendMessage(String from, String recipient, String content, int chatId) {
         try {
-            Message msg = new Message(from, recipient, content);
+            Message msg = new Message(from, recipient, content, chatId);
             String xmlMessage = XMLUtil.toXML(msg);
             send(xmlMessage);
         } catch (JAXBException e) {

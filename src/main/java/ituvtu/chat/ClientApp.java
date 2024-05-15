@@ -1,9 +1,13 @@
 package ituvtu.chat;
+
 import javafx.application.Application;
 import javafx.fxml.FXMLLoader;
-import javafx.scene.*;
+import javafx.scene.Parent;
+import javafx.scene.Scene;
 import javafx.stage.Stage;
-import java.net.*;
+
+import java.net.URISyntaxException;
+import java.util.Objects;
 
 public class ClientApp extends Application {
     static ClientController controller;
@@ -45,6 +49,7 @@ public class ClientApp extends Application {
         client.addObserver(controller);
 
         Scene scene = new Scene(root);
+        scene.getStylesheets().add(Objects.requireNonNull(ClientApp.class.getResource("client-styles.css")).toExternalForm());
         primaryStage.setTitle("Client of " + username);
         primaryStage.setScene(scene);
         primaryStage.show();

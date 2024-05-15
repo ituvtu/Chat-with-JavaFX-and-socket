@@ -1,0 +1,110 @@
+.vbox-with-border {
+    -fx-border-color: #6B9080; /* Колір рамки */
+    -fx-border-width: 2; /* Ширина рамки */
+    -fx-border-radius: 5; /* Радіус закруглення */
+    -fx-padding: 5; /* Внутрішній відступ */
+    -fx-background-color: #EAF4F4; /* Задній фон VBox */
+}
+
+.chat-background {
+    -fx-background-color: #E3F2FD; /* Колір фону ділянки чату */
+}
+
+.log-background {
+    -fx-background-color: #E3F2FD;
+}
+
+.message-text {
+    -fx-fill: white;
+}
+
+.chat-list {
+    -fx-background-color: #E3F2FD;
+    -fx-border-color: #6B9080;
+    -fx-border-width: 2;
+    -fx-border-radius: 5;
+    -fx-padding: 5;
+}
+
+.list-cell {
+    -fx-background-color: #487484;
+    -fx-text-fill: white;
+    -fx-font-size: 14px;
+    -fx-padding: 10;
+    -fx-border-color: #A4C3B2;
+    -fx-border-width: 1;
+    -fx-border-radius: 5;
+}
+
+.list-cell:hover {
+    -fx-background-color: #3F6C7D;
+}
+
+.list-cell:selected {
+    -fx-background-color: #366476;
+}
+
+.list-cell:empty {
+    -fx-padding: 0;
+    -fx-background-color: transparent;
+    -fx-border-width: 0;
+}
+
+.date-label {
+    -fx-font-weight: bold;
+    -fx-background-color: #95ADB6;
+    -fx-padding: 5;
+    -fx-background-radius: 10;
+    -fx-text-fill: #16697A;
+}
+
+.sender-label {
+    -fx-font-size: 13;
+    -fx-text-fill: #0D2818;
+}
+
+.time-label {
+    -fx-font-size: 10;
+    -fx-text-fill: #04471C;
+}
+
+.text-container-left {
+    -fx-background-color: #598392;
+    -fx-padding: 2 10 2 10;
+    -fx-background-radius: 10;
+}
+
+.text-container-right {
+    -fx-background-color: #124559;
+    -fx-padding: 2 10 2 10;
+    -fx-background-radius: 10;
+}
+
+.message-text-flow {
+    -fx-padding: 5;
+}
+
+.message-text {
+    -fx-padding: 5 0 5 0; /* Відступи зверху та знизу */
+}
+
+.log-message {
+    -fx-padding: 10;
+    -fx-background-radius: 10;
+}
+
+.log-message-color-success {
+    -fx-background-color: #7ABA78; /* Success color */
+}
+
+.log-message-color-error {
+    -fx-background-color: #AD88C6; /* Error color */
+}
+
+.log-message-color-warning {
+    -fx-background-color: #FFC100; /* Warning color */
+}
+
+.log-message-color-info {
+    -fx-background-color: #F6E9B2; /* Info color */
+}

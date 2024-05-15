@@ -1,17 +1,20 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <?import javafx.scene.control.*?>
 <?import javafx.scene.layout.*?>
-<VBox fx:controller="ituvtu.chat.ClientController" xmlns:fx="http://javafx.com/fxml/1" spacing="10">
+<VBox fx:controller="ituvtu.chat.ClientController" xmlns:fx="http://javafx.com/fxml/1" spacing="10" prefHeight="750">
     <HBox spacing="5">
         <TextField fx:id="newChatUsername" promptText="Enter username..." HBox.hgrow="ALWAYS"/>
         <Button text="O" onAction="#requestUserChats"/>
         <Button text="+" onAction="#createNewChat"/>
         <Button text="-" onAction="#deleteChat"/>
-
     </HBox>
-    <ListView fx:id="chatListView" prefHeight="200.0" prefWidth="300.0"/>
-    <VBox fx:id="messagesArea" prefHeight="200.0" prefWidth="300.0"/>
-    <TextArea fx:id="logMessagesArea" editable="false" prefHeight="150.0" prefWidth="300.0" />
+    <ListView fx:id="chatListView" maxHeight="200.0" prefWidth="300.0" VBox.vgrow="NEVER"/>
+    <TextArea fx:id="logMessagesArea" maxHeight="100" editable="false" VBox.vgrow="NEVER"/>
+    <ScrollPane fx:id="scrollPane" maxHeight="600" prefHeight="400" fitToWidth="true" fitToHeight="true" VBox.vgrow="ALWAYS">
+        <VBox fx:id="messagesArea" spacing="5" styleClass="messagesArea">
+            <!-- Messages will be added here by code side -->
+        </VBox>
+    </ScrollPane>
     <HBox spacing="10">
         <TextField fx:id="inputField" HBox.hgrow="ALWAYS"/>
         <Button text="Send" onAction="#onSend"/>

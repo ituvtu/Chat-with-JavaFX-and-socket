@@ -1,10 +1,17 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<?import javafx.scene.control.*?>
+<?import javafx.scene.control.ListView?>
+<?import javafx.scene.control.ScrollPane?>
 <?import javafx.scene.layout.*?>
-<HBox spacing="10.0" xmlns:fx="http://javafx.com/fxml/1" fx:controller="ituvtu.chat.ServerController">
+<HBox spacing="10.0" xmlns:fx="http://javafx.com/fxml/1" fx:controller="ituvtu.chat.ServerController" stylesheets="@server-styles.css">
     <VBox alignment="CENTER" spacing="10.0">
-        <ListView fx:id="chatListView" prefHeight="400.0" prefWidth="300.0"/>
-        <TextArea fx:id="logMessagesArea" editable="false" prefHeight="200.0" prefWidth="300.0"/>
+        <ListView fx:id="chatListView" prefHeight="400.0" prefWidth="300.0" styleClass="chat-list"/>
+        <ScrollPane fx:id="logScrollPane" prefHeight="200.0" prefWidth="300.0" fitToWidth="true" styleClass="log-background">
+            <VBox fx:id="logMessagesArea" prefHeight="200.0" spacing="10" styleClass="log-background" >
+            </VBox>
+        </ScrollPane>
     </VBox>
-    <TextArea fx:id="messagesArea" editable="false" prefHeight="600.0" prefWidth="300.0"/>
+    <ScrollPane fx:id="messageScrollPane" fitToWidth="true" fitToHeight="true" HBox.hgrow="ALWAYS" styleClass="chat-background" >
+        <VBox fx:id="messagesArea" prefHeight="600.0" prefWidth="300.0" spacing="5" styleClass="chat-background">
+        </VBox>
+    </ScrollPane>
 </HBox>

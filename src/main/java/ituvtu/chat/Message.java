@@ -1,30 +1,34 @@
 package ituvtu.chat;
 
-import jakarta.xml.bind.annotation.*;
+import jakarta.xml.bind.annotation.XmlRootElement;
+import jakarta.xml.bind.annotation.adapters.XmlJavaTypeAdapter;
 
-@XmlRootElement(name = "message")
+import java.time.LocalDateTime;
+
+@XmlRootElement
 public class Message {
-
     private String from;
-
     private String to;
-
     private String content;
+    private LocalDateTime timestamp;
+    private int chatId;
 
-    public Message() {
-       // JAXB requires a constructor with no arguments
-    }
-    public Message(String from, String to, String content) {
+    // Конструктор
+    public Message() {}
+
+    public Message(String from, String to, String content, int chatId) {
         this.from = from;
         this.to = to;
         this.content = content;
+        this.timestamp = LocalDateTime.now();
+        this.chatId = chatId;
     }
 
+    // Геттери і сеттери
     public String getFrom() {
         return from;
     }
 
-    @XmlElement
     public void setFrom(String from) {
         this.from = from;
     }
@@ -33,7 +37,6 @@ public class Message {
         return to;
     }
 
-    @XmlElement
     public void setTo(String to) {
         this.to = to;
     }
@@ -42,8 +45,24 @@ public class Message {
         return content;
     }
 
-    @XmlElement
     public void setContent(String content) {
         this.content = content;
+    }
+
+    @XmlJavaTypeAdapter(LocalDateTimeAdapter.class)
+    public LocalDateTime getTimestamp() {
+        return timestamp;
+    }
+
+    public void setTimestamp(LocalDateTime timestamp) {
+        this.timestamp = timestamp;
+    }
+
+    public int getChatId() {
+        return chatId;
+    }
+
+    public void setChatId(int chatId) {
+        this.chatId = chatId;
     }
 }
