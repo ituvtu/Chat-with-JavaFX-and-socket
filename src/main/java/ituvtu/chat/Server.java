@@ -1,14 +1,11 @@
 package ituvtu.chat;
 
-import jakarta.xml.bind.JAXBContext;
-import jakarta.xml.bind.JAXBException;
+import jakarta.xml.bind.*;
 import org.java_websocket.WebSocket;
 import org.java_websocket.handshake.ClientHandshake;
 import org.java_websocket.server.WebSocketServer;
 
 import java.net.InetSocketAddress;
-import java.sql.*;
-import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
@@ -17,20 +14,16 @@ public class Server extends WebSocketServer {
     private static Server instance;
     final Set<WebSocket> connections;
     final Set<ServerObserver> observers;
-    final ChatManager chatManager;
     final DatabaseManager dbManager;
-    final Connection dbConn = DatabaseConnection.getConnection();
-    JAXBContext context = JAXBContext.newInstance(Message.class, UserConnectionInfo.class);
 
-    public Server(int port) throws JAXBException {
+    public Server(int port) {
         super(new InetSocketAddress(port));
         connections = new HashSet<>();
         observers = new HashSet<>();
-        this.chatManager = new ChatManager(dbConn);
         dbManager = DatabaseManager.getInstance();
     }
 
-    public static synchronized Server getInstance(int port) throws JAXBException {
+    public static synchronized Server getInstance(int port){
         if (instance == null) {
             instance = new Server(port);
         }
@@ -71,37 +64,15 @@ public class Server extends WebSocketServer {
             connections.remove(conn);
         }
         assert conn != null;
-        InetSocketAddress remoteAddress = conn.getRemoteSocketAddress();
-        int port = remoteAddress.getPort();
+        int port = conn.getRemoteSocketAddress().getPort();
         String logMessage = "Error from " + port + ": " + ex.getMessage();
         System.out.println(logMessage);
         notifyObserversWithLog(logMessage, "log-message-color-info");
     }
 
     void updateChatList() {
-        List<ChatDisplayData> chats = getAllChats();
+        List<ChatDisplayData> chats = dbManager.getAllChats();
         notifyObserversAboutChats(chats);
-    }
-
-    List<ChatDisplayData> getAllChats() {
-        List<ChatDisplayData> chats = new ArrayList<>();
-        String sql = "SELECT chat_id, username_first, username_second FROM chat";
-        if (dbConn != null) {
-            try (PreparedStatement stmt = dbConn.prepareStatement(sql)) {
-                ResultSet rs = stmt.executeQuery();
-                while (rs.next()) {
-                    int chatId = rs.getInt("chat_id");
-                    String userFirst = rs.getString("username_first");
-                    String userSecond = rs.getString("username_second");
-                    String displayName = userFirst + " - " + userSecond;
-                    chats.add(new ChatDisplayData(chatId, displayName, userFirst, userSecond));
-                }
-            } catch (SQLException e) {
-                String logMessage = "Database error: " + e.getMessage();
-                notifyObserversWithLog(logMessage, "log-message-color-error");
-            }
-        }
-        return chats;
     }
 
     void notifyObserversAboutChats(List<ChatDisplayData> chats) {
@@ -146,29 +117,11 @@ public class Server extends WebSocketServer {
 
     void handleUserConnectionInfo(WebSocket conn, String input) throws JAXBException {
         UserConnectionInfo info = XMLUtil.fromXML(input, UserConnectionInfo.class);
-        updateDatabase(info.getUsername(), getPortConn(conn));
+        dbManager.updateConnectionInfo(info.getUsername(), getPortConn(conn));
     }
 
     void recordMessageInDatabase(Message msg) {
-        Integer chatId = chatManager.getChatIdByUsernames(msg.getFrom(), msg.getTo());
-        if (chatId != null) {
-            String sql = "INSERT INTO chat_messages (chat_id, message, username_from, timestamp) VALUES (?, ?, ?, ?)";
-            if (dbConn != null) {
-                try (PreparedStatement stmt = dbConn.prepareStatement(sql)) {
-                    stmt.setInt(1, chatId);
-                    stmt.setString(2, msg.getContent());
-                    stmt.setString(3, msg.getFrom());
-                    stmt.setTimestamp(4, Timestamp.valueOf(msg.getTimestamp()));
-                    stmt.executeUpdate();
-                } catch (SQLException e) {
-                    String logMessage = "Database error: " + e.getMessage();
-                    notifyObserversWithLog(logMessage, "log-message-color-error");
-                }
-            }
-        } else {
-            String logMessage = "Chat ID not found for users: " + msg.getFrom() + " and " + msg.getTo();
-            notifyObserversWithLog(logMessage, "log-message-color-error");
-        }
+        dbManager.recordMessage(msg);
     }
 
     public WebSocket getConnection() {
@@ -181,7 +134,7 @@ public class Server extends WebSocketServer {
     }
 
     void processGetMessagesRequest(WebSocket conn, ChatRequest chatRequest) {
-        List<Message> messages = getMessagesFromDatabase(chatRequest.getChatId());
+        List<Message> messages = dbManager.getMessagesFromDatabase(chatRequest.getChatId());
         try {
             String messagesXml = XMLUtil.toXML(new MessagesResponse(messages));
             conn.send(messagesXml);
@@ -190,55 +143,18 @@ public class Server extends WebSocketServer {
         }
     }
 
-    String processServerGetMessagesRequest(int chat_id) throws JAXBException {
-        return XMLUtil.toXML(new MessagesResponse(getMessagesFromDatabase(chat_id)));
-    }
-
-    List<Message> getMessagesFromDatabase(Integer chatId) {
-        List<Message> messages = new ArrayList<>();
-        String sql = "SELECT * FROM chat_messages WHERE chat_id = ?";
-        if (dbConn != null) {
-            try (PreparedStatement stmt = dbConn.prepareStatement(sql)) {
-                stmt.setInt(1, chatId);
-                ResultSet rs = stmt.executeQuery();
-                while (rs.next()) {
-                    Message message = new Message(
-                            rs.getString("username_from"),
-                            null,
-                            rs.getString("message"),
-                            rs.getInt("chat_id") // Отримання chatId
-                    );
-                    message.setTimestamp(rs.getTimestamp("timestamp").toLocalDateTime());
-                    messages.add(message);
-                }
-            } catch (SQLException e) {
-                String logMessage = "Database error: " + e.getMessage();
-                notifyObserversWithLog(logMessage, "log-message-color-error");
-            }
-        }
-        return messages;
+    String processServerGetMessagesRequest(int chatId) throws JAXBException {
+        return XMLUtil.toXML(new MessagesResponse(dbManager.getMessagesFromDatabase(chatId)));
     }
 
     void handleChatMessage(WebSocket conn, Message message) {
-        String sql = "INSERT INTO chat_messages (chat_id, message, username_from) VALUES (?, ?, ?)";
-        if (dbConn != null) {
-            try (PreparedStatement stmt = dbConn.prepareStatement(sql)) {
-                stmt.setInt(1, Integer.parseInt(message.getTo())); // chat_id
-                stmt.setString(2, message.getContent()); // message
-                stmt.setString(3, message.getFrom()); // username_from
-                stmt.executeUpdate();
-                conn.send("Message sent successfully");
-            } catch (SQLException e) {
-                String logMessage = "Database error: " + e.getMessage();
-                notifyObserversWithLog(logMessage, "log-message-color-error");
-                conn.send("Failed to send message");
-            }
-        }
+        dbManager.recordMessage(message);
+        conn.send("Message sent successfully");
         updateChatList();
     }
 
     void processChatUpdateRequest(WebSocket conn, ChatRequest chatRequest) {
-        boolean success = chatManager.updateChat(chatRequest.getChatId(), chatRequest.getParameters());
+        boolean success = dbManager.updateChat(chatRequest.getChatId(), chatRequest.getParameters());
         if (success) {
             conn.send("Chat updated successfully.");
         } else {
@@ -248,7 +164,7 @@ public class Server extends WebSocketServer {
     }
 
     void processChatDeletionRequest(WebSocket conn, ChatRequest chatRequest) {
-        boolean success = chatManager.deleteChat(chatRequest.getChatId());
+        boolean success = dbManager.deleteChat(chatRequest.getChatId());
         if (success) {
             conn.send("Chat deleted successfully.");
         } else {
@@ -258,7 +174,7 @@ public class Server extends WebSocketServer {
     }
 
     void processGetChatsRequest(WebSocket conn, ChatRequest chatRequest) {
-        List<Chat> chats = chatManager.getUserChats(chatRequest.getUsername1());
+        List<Chat> chats = dbManager.getUserChats(chatRequest.getUsername1());
         try {
             String responseXml = XMLUtil.toXML(new ChatListResponse(chats));
             conn.send(responseXml);
@@ -271,12 +187,12 @@ public class Server extends WebSocketServer {
     }
 
     void processChatCreationRequest(WebSocket conn, ChatRequest chatRequest) {
-        if (userExists(chatRequest.getUsername1()) && userExists(chatRequest.getUsername2())) {
-            boolean chatExists = chatManager.chatExists(chatRequest.getUsername1(), chatRequest.getUsername2());
+        if (dbManager.userExists(chatRequest.getUsername1()) && dbManager.userExists(chatRequest.getUsername2())) {
+            boolean chatExists = dbManager.chatExists(chatRequest.getUsername1(), chatRequest.getUsername2());
             if (chatExists) {
                 conn.send("Chat already exists between " + chatRequest.getUsername1() + " and " + chatRequest.getUsername2() + ". Please find it in your chat list.");
             } else {
-                boolean chatCreated = chatManager.createChat(chatRequest.getUsername1(), chatRequest.getUsername2());
+                boolean chatCreated = dbManager.createChat(chatRequest.getUsername1(), chatRequest.getUsername2());
                 if (chatCreated) {
                     conn.send("Chat created successfully between " + chatRequest.getUsername1() + " and " + chatRequest.getUsername2());
                 } else {
@@ -290,25 +206,12 @@ public class Server extends WebSocketServer {
     }
 
     public boolean userExists(String username) {
-        String sql = "SELECT COUNT(*) FROM users WHERE username = ?";
-        if (dbConn != null) {
-            try (PreparedStatement stmt = dbConn.prepareStatement(sql)) {
-                stmt.setString(1, username);
-                ResultSet rs = stmt.executeQuery();
-                if (rs.next()) {
-                    return rs.getInt(1) > 0; // Повертає true, якщо користувач знайдений
-                }
-            } catch (SQLException e) {
-                String logmessage = "Database error while checking user existence: " + e.getMessage();
-                notifyObserversWithLog(logmessage, "log-message-color-info");
-            }
-        }
-        return false;
+        return dbManager.userExists(username);
     }
 
     void sendDirectMessage(Message msg) {
         String recipientUsername = msg.getTo();
-        int recipientPort = findPortByUsername(recipientUsername);
+        int recipientPort = dbManager.findPortByUsername(recipientUsername);
 
         connections.stream()
                 .peek(ws -> System.out.println("Checking port: " + ws.getRemoteSocketAddress().getPort()))
@@ -326,7 +229,7 @@ public class Server extends WebSocketServer {
     }
 
     List<Chat> getUserChats(String username) {
-        return chatManager.getUserChats(username);
+        return dbManager.getUserChats(username);
     }
 
     int findPortByUsername(String username) {

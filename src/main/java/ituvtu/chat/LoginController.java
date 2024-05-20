@@ -9,16 +9,16 @@ public class LoginController {
     @FXML
     private TextField usernameField;
 
-    public void handleLoginButton() throws Exception {
+    private ClientController controller;
+    public void handleLoginButton() {
         String username = usernameField.getText().trim();
         String password = passwordField.getText().trim();
-        if (!username.isEmpty() && !password.isEmpty()) {
-            if (DatabaseManager.checkOrCreateUser(username, password)) {
-                ClientApp.setUsername(username);
-                ClientApp.showMainScreen();
-            } else {
-                System.out.println("Error logging in or creating account.");
-            }
-        }
+        if (!username.isEmpty() && !password.isEmpty()&&controller!= null) {
+            controller.sendAuthenticationInfo(username,password);
+        }}
+    public void setController(ClientController controller) {
+        this.controller = controller;
     }
 }
+
+

@@ -19,7 +19,6 @@ public class Client extends WebSocketClient {
         }
         return instance;
     }
-
     Client(String url) throws URISyntaxException {
         super(new URI(url));
     }
@@ -27,10 +26,9 @@ public class Client extends WebSocketClient {
     @Override
     public void onOpen(ServerHandshake handshake) {
         System.out.println("Connected to server on port: " + getURI().getPort());
-        sendConnectionInfo();
     }
 
-    private void sendConnectionInfo() {
+    void sendConnectionInfo() {
         UserConnectionInfo info = new UserConnectionInfo(ClientApp.getUsername(), getURI().getPort());
         try {
             String xmlInfo = XMLUtil.toXML(info);
@@ -72,5 +70,15 @@ public class Client extends WebSocketClient {
     @Override
     public void onError(Exception ex) {
         System.out.println("Error occurred: " + ex.getMessage());
+    }
+
+    public void sendAuthRequest(String username, String password) {
+        try {
+            AuthRequest authRequest = new AuthRequest(username, password);
+            String xmlMessage = XMLUtil.toXML(authRequest);
+            send(xmlMessage);
+        } catch (JAXBException e) {
+            System.err.println("Error serializing auth request: " + e.getMessage());
+        }
     }
 }

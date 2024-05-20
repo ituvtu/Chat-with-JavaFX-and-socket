@@ -1,33 +1,25 @@
 package ituvtu.chat;
 
-import jakarta.xml.bind.JAXBContext;
-import jakarta.xml.bind.JAXBException;
-import jakarta.xml.bind.Unmarshaller;
+import jakarta.xml.bind.*;
 import javafx.application.Platform;
 import javafx.fxml.FXML;
 import javafx.geometry.Pos;
-import javafx.scene.control.Label;
-import javafx.scene.control.ListCell;
-import javafx.scene.control.ListView;
-import javafx.scene.control.ScrollPane;
-import javafx.scene.layout.HBox;
-import javafx.scene.layout.StackPane;
-import javafx.scene.layout.VBox;
-import javafx.scene.text.Text;
-import javafx.scene.text.TextFlow;
+import javafx.scene.control.*;
+import javafx.scene.layout.*;
+import javafx.scene.text.*;
 import javafx.util.Callback;
 import org.java_websocket.WebSocket;
 
-import java.io.StringReader;
-import java.time.LocalDate;
-import java.time.LocalDateTime;
-import java.time.format.DateTimeFormatter;
-import java.time.format.TextStyle;
+import java.io.*;
+import java.time.*;
+import java.time.format.*;
 import java.util.List;
 import java.util.Locale;
 import java.util.Objects;
+
 public class ServerController implements ServerObserver {
     private static ServerController instance;
+
     public ListView<ChatDisplayData> chatListView;
     @FXML
     public VBox messagesArea;
@@ -49,7 +41,6 @@ public class ServerController implements ServerObserver {
 
     @FXML
     public void initialize() {
-        // Налаштування cellFactory для ListView
         chatListView.setCellFactory(new Callback<>() {
             @Override
             public ListCell<ChatDisplayData> call(ListView<ChatDisplayData> listView) {
@@ -153,12 +144,12 @@ public class ServerController implements ServerObserver {
         Label senderLabel = new Label(message.getFrom());
         senderLabel.getStyleClass().add("sender-label");
 
-        // Створення текстового вузла для повідомлення
+        // Create a text node for a message
         Text messageText = new Text(message.getContent());
-        messageText.setWrappingWidth(300);  // Максимальна ширина тексту
+        messageText.setWrappingWidth(300);  // Maximum text width
         messageText.getStyleClass().add("message-text");
 
-        // Створення TextFlow для повідомлення
+        // Creating a TextFlow for a message
         TextFlow messageFlow = new TextFlow(messageText);
         messageFlow.setMaxWidth(300);
         messageFlow.getStyleClass().add("message-text-flow");
@@ -166,7 +157,7 @@ public class ServerController implements ServerObserver {
         Label timeLabel = new Label(timestamp.format(DateTimeFormatter.ofPattern("HH:mm")));
         timeLabel.getStyleClass().add("time-label");
 
-        // Контейнер для повідомлення
+        // Message container
         HBox messageContainer = new HBox();
         messageContainer.setMaxWidth(300);
 
@@ -231,13 +222,6 @@ public class ServerController implements ServerObserver {
         Platform.runLater(() -> chatListView.getItems().add(chatInfo));
     }
 
-    public void setChatList(List<ChatDisplayData> chats) {
-        Platform.runLater(() -> {
-            chatListView.getItems().clear();
-            chatListView.getItems().addAll(chats);
-        });
-    }
-
     public void setServer(Server server) {
         this.server = server;
     }
@@ -249,7 +233,12 @@ public class ServerController implements ServerObserver {
             chatListView.getItems().addAll(chats);
         });
     }
-
+    public void setChatList(List<ChatDisplayData> chats) {
+        Platform.runLater(() -> {
+            chatListView.getItems().clear();
+            chatListView.getItems().addAll(chats);
+        });
+    }
     @Override
     public void onMessage(WebSocket conn, String input) throws JAXBException {
         if (input.contains("<userConnectionInfo>")) {
@@ -258,10 +247,28 @@ public class ServerController implements ServerObserver {
             handleMessage(conn, input);
         } else if (input.contains("<chatRequest>")) {
             handleChatRequest(conn, input);
+        } else if (input.contains("<authRequest>")) {
+            handleAuthRequest(conn, input);
         } else {
             conn.send("Unsupported input format");
         }
     }
+
+    void handleAuthRequest(WebSocket conn, String input) {
+        try {
+            JAXBContext context = JAXBContext.newInstance(AuthRequest.class, AuthResponse.class);
+            Unmarshaller unmarshaller = context.createUnmarshaller();
+            StringReader reader = new StringReader(input);
+            AuthRequest authRequest = (AuthRequest) unmarshaller.unmarshal(reader);
+            boolean authenticated = DatabaseManager.checkOrCreateUser(authRequest.getUsername(), authRequest.getPassword());
+            AuthResponse authResponse = new AuthResponse(authenticated, authRequest.getUsername());
+            String authResponseXml = XMLUtil.toXML(authResponse);
+            conn.send(authResponseXml);
+        } catch (JAXBException e) {
+            e.printStackTrace();
+        }
+    }
+
 
     private void handleChatRequest(WebSocket conn, String input) throws JAXBException {
         ChatRequest chatRequest = XMLUtil.fromXML(input, ChatRequest.class);
@@ -341,5 +348,4 @@ public class ServerController implements ServerObserver {
             logMessagesArea.getChildren().add(logLabel);
         });
     }
-
 }

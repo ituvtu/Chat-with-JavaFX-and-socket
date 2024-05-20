@@ -1,6 +1,5 @@
 package ituvtu.chat;
 
-
 import jakarta.xml.bind.JAXBContext;
 import jakarta.xml.bind.JAXBException;
 import jakarta.xml.bind.Unmarshaller;
@@ -37,7 +36,7 @@ public class ClientController implements ClientObserver {
     public TextField newChatUsername;
     public TextArea logMessagesArea;
     private LocalDate currentDisplayedDate = null;
-    private int currentChatId = -1; // Зберігання ID поточного чату
+    private int currentChatId = -1;
 
     public ClientController() {}
 
@@ -68,7 +67,6 @@ public class ClientController implements ClientObserver {
             }
         });
 
-        // Загрузка стилів для всіх елементів
         String stylesheet = Objects.requireNonNull(getClass().getResource("client-styles.css")).toExternalForm();
         scrollPane.getStylesheets().add(stylesheet);
         chatListView.getStylesheets().add(stylesheet);
@@ -76,19 +74,21 @@ public class ClientController implements ClientObserver {
 
         chatListView.getSelectionModel().selectedItemProperty().addListener((obs, oldSelection, newSelection) -> {
             if (newSelection != null) {
-                currentChatId = newSelection.chatId(); // Оновлення ID поточного чату
+                currentChatId = newSelection.chatId();
                 loadChatMessages(newSelection.chatId());
             }
         });
 
-        // Make the ScrollPane always scroll to the bottom when new messages are added
         messagesArea.heightProperty().addListener((observable, oldValue, newValue) -> scrollPane.setVvalue(1.0));
     }
 
-
     public void setClient(Client client) {
         this.client = client;
+        if (client != null) {
+            client.addObserver(this);
+        }
     }
+
 
     private void loadChatMessages(int chatId) {
         messagesArea.getChildren().clear();
@@ -103,18 +103,41 @@ public class ClientController implements ClientObserver {
 
     @Override
     public void onMessage(String xmlMessage) {
-        if (xmlMessage.contains("<chatListResponse>")) {
-            processChatListResponse(xmlMessage);
-        } else if (xmlMessage.contains("<message>")) {
-            processMessage(xmlMessage);
-        } else if (xmlMessage.contains("<messagesResponse>")) {
-            processMessagesResponse(xmlMessage);
-        } else if (xmlMessage.contains("<messagesResponse/>")) {
-            // We don't need to output empty messages
-        } else if (xmlMessage.contains("<chatListResponse/>")) {
-            // We don't need to output empty chat list
-        } else {
-            displayLogMessage(xmlMessage);
+        Platform.runLater(() -> {
+            if (xmlMessage.contains("<chatListResponse>")) {
+                processChatListResponse(xmlMessage);
+            } else if (xmlMessage.contains("<message>")) {
+                processMessage(xmlMessage);
+            } else if (xmlMessage.contains("<authResponse")) {
+                processAuthResponse(xmlMessage);
+            } else if (xmlMessage.contains("<messagesResponse>")) {
+                processMessagesResponse(xmlMessage);
+            } else {
+                if (!xmlMessage.contains("<messagesResponse/>") || !xmlMessage.contains("<chatListResponse/>")) {
+                    displayLogMessage(xmlMessage);
+                }
+            }
+        });
+    }
+
+    private void processAuthResponse(String xmlMessage) {
+        try {
+            AuthResponse response = XMLUtil.fromXML(xmlMessage, AuthResponse.class);
+            if (response.isAuthenticated()) {
+                Platform.runLater(() -> {
+                    try {
+                        ClientApp.setUsername(response.getUsername());
+                        ClientApp.showMainScreen();
+                        client.sendConnectionInfo();
+                    } catch (Exception e) {
+                        e.printStackTrace();
+                    }
+                });
+            } else {
+                displayLogMessage("Authentication failed. Please check your username and password.");
+            }
+        } catch (JAXBException e) {
+            displayLogMessage("Error parsing auth response: " + e.getMessage());
         }
     }
 
@@ -126,6 +149,7 @@ public class ClientController implements ClientObserver {
             displayLogMessage("Error parsing chat list: " + e.getMessage());
         }
     }
+
 
     private void processMessage(String xmlMessage) {
         try {
@@ -160,75 +184,71 @@ public class ClientController implements ClientObserver {
         });
     }
 
+
+
     private void updateMessagesArea(List<Message> messages) {
-        Platform.runLater(() -> {
-            messagesArea.getChildren().clear();
-            currentDisplayedDate = null;
-            for (Message message : messages) {
-                // Перевірка чи повідомлення належить до поточного чату
-                if (currentChatId == message.getChatId()) {
-                    displayMessage(message);
-                }
+        messagesArea.getChildren().clear();
+        currentDisplayedDate = null;
+        for (Message message : messages) {
+
+            if (currentChatId == message.getChatId()) {
+                displayMessage(message);
             }
-        });
+        }
     }
 
     private void displayMessage(Message message) {
-        Platform.runLater(() -> {
-            LocalDateTime timestamp = message.getTimestamp();
-            LocalDate messageDate = timestamp.toLocalDate();
+        LocalDateTime timestamp = message.getTimestamp();
+        LocalDate messageDate = timestamp.toLocalDate();
 
-            // Додавання лейбла з датою, якщо дата змінилася
-            if (currentDisplayedDate == null || !currentDisplayedDate.equals(messageDate)) {
-                currentDisplayedDate = messageDate;
-                String formattedDate = formatDate(messageDate);
-                Label dateLabel = new Label(formattedDate);
-                dateLabel.setAlignment(Pos.CENTER);
-                dateLabel.getStyleClass().add("date-label");
-                HBox dateBox = new HBox();
-                dateBox.setAlignment(Pos.CENTER);
-                dateBox.getChildren().add(dateLabel);
-                messagesArea.getChildren().add(dateBox);
-            }
+        if (currentDisplayedDate == null || !currentDisplayedDate.equals(messageDate)) {
+            currentDisplayedDate = messageDate;
+            String formattedDate = formatDate(messageDate);
+            Label dateLabel = new Label(formattedDate);
+            dateLabel.setAlignment(Pos.CENTER);
+            dateLabel.getStyleClass().add("date-label");
+            HBox dateBox = new HBox();
+            dateBox.setAlignment(Pos.CENTER);
+            dateBox.getChildren().add(dateLabel);
+            messagesArea.getChildren().add(dateBox);
+        }
 
-            VBox messageBox = new VBox();
-            Label senderLabel = new Label(message.getFrom());
-            senderLabel.getStyleClass().add("sender-label");
+        VBox messageBox = new VBox();
+        Label senderLabel = new Label(message.getFrom());
+        senderLabel.getStyleClass().add("sender-label");
 
-            Text messageText = new Text(message.getContent());
-            messageText.setWrappingWidth(300);
-            messageText.getStyleClass().add("message-text");
+        Text messageText = new Text(message.getContent());
+        messageText.setWrappingWidth(300);
+        messageText.getStyleClass().add("message-text");
 
-            TextFlow messageFlow = new TextFlow(messageText);
-            messageFlow.setMaxWidth(300);
-            messageFlow.getStyleClass().add("message-text-flow");
+        TextFlow messageFlow = new TextFlow(messageText);
+        messageFlow.setMaxWidth(300);
+        messageFlow.getStyleClass().add("message-text-flow");
 
-            Label timeLabel = new Label(timestamp.format(DateTimeFormatter.ofPattern("HH:mm")));
-            timeLabel.getStyleClass().add("time-label");
+        Label timeLabel = new Label(timestamp.format(DateTimeFormatter.ofPattern("HH:mm")));
+        timeLabel.getStyleClass().add("time-label");
 
-            HBox messageContainer = new HBox();
-            messageContainer.setMaxWidth(300);
+        HBox messageContainer = new HBox();
+        messageContainer.setMaxWidth(300);
 
-            StackPane textContainer = new StackPane(messageFlow);
-            textContainer.setMaxWidth(300);
+        StackPane textContainer = new StackPane(messageFlow);
+        textContainer.setMaxWidth(300);
 
-            messageContainer.getChildren().add(textContainer);
+        messageContainer.getChildren().add(textContainer);
 
-            if (message.getFrom().equals(ClientApp.getUsername())) {
-                messageBox.setAlignment(Pos.CENTER_LEFT);
-                messageContainer.setAlignment(Pos.CENTER_LEFT);
-                textContainer.getStyleClass().add("text-container-left");
-            } else {
-                messageBox.setAlignment(Pos.CENTER_RIGHT);
-                messageContainer.setAlignment(Pos.CENTER_RIGHT);
-                textContainer.getStyleClass().add("text-container-right");
-            }
+        if (message.getFrom().equals(ClientApp.getUsername())) {
+            messageBox.setAlignment(Pos.CENTER_LEFT);
+            messageContainer.setAlignment(Pos.CENTER_LEFT);
+            textContainer.getStyleClass().add("text-container-left");
+        } else {
+            messageBox.setAlignment(Pos.CENTER_RIGHT);
+            messageContainer.setAlignment(Pos.CENTER_RIGHT);
+            textContainer.getStyleClass().add("text-container-right");
+        }
 
-            messageBox.getChildren().addAll(senderLabel, messageContainer, timeLabel);
-            messagesArea.getChildren().add(messageBox);
-        });
+        messageBox.getChildren().addAll(senderLabel, messageContainer, timeLabel);
+        messagesArea.getChildren().add(messageBox);
     }
-
 
     private String formatDate(LocalDate date) {
         DateTimeFormatter formatter = DateTimeFormatter.ofPattern("dd MMMM", Locale.getDefault());
@@ -236,7 +256,7 @@ public class ClientController implements ClientObserver {
     }
 
     private void displayLogMessage(String text) {
-        Platform.runLater(() -> logMessagesArea.appendText(text + "\n"));
+        logMessagesArea.appendText(text + "\n");
     }
 
     public void setChatList(List<String> chats) {
@@ -271,7 +291,7 @@ public class ClientController implements ClientObserver {
             if (!messageContent.isEmpty()) {
                 ChatDisplayData selectedChat = chatListView.getSelectionModel().getSelectedItem();
                 if (selectedChat != null) {
-                    int chatId = selectedChat.chatId();  // Отримання chatId
+                    int chatId = selectedChat.chatId();
                     Message message = new Message(ClientApp.getUsername(), selectedChat.displayName(), messageContent, chatId);
                     client.sendMessage(ClientApp.getUsername(), selectedChat.displayName(), messageContent, chatId);
                     inputField.clear();
@@ -335,5 +355,12 @@ public class ClientController implements ClientObserver {
         } else {
             displayLogMessage("Please select a chat to delete.\n");
         }
+    }
+
+    public void sendAuthenticationInfo(String username, String password) {
+        client.sendAuthRequest(username, password);
+    }
+    public Client getClient(){
+        return client;
     }
 }
